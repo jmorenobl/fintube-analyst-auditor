@@ -23,4 +23,8 @@ jobs:
       - name: Crear la release con el ZIP
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/fintube-analyst-auditor.zip --title "$GITHUB_REF_NAME" --notes-file CHANGELOG.md
+        run: |
+          # Solo la seccion del CHANGELOG de esta version (de "## X.Y.Z" hasta la siguiente "## ").
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="## $VERSION" 'index($0, v) == 1 {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/fintube-analyst-auditor.zip --title "$GITHUB_REF_NAME" --notes-file notes.md

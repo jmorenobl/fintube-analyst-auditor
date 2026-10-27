@@ -5,7 +5,7 @@ license: EUPL-1.2
 compatibility: Requiere Python 3.9+ y acceso a internet (youtube.com y finance.yahoo.com). Recomendado uv. En apps de chat con sandbox (Claude.ai, ChatGPT) hay que permitir el acceso de red a esos dominios.
 metadata:
   author: jmorenobl
-  version: "0.1.0"
+  version: "0.2.0"
   repository: https://github.com/jmorenobl/fintube-analyst-auditor
 ---
 
@@ -71,8 +71,11 @@ uv run scripts/fintube_cli.py audit --tickers "SAN.MC,REP.MC" --signal-date 2026
 ```
 
 - `--signal-date` = fecha de publicacion del video. Si `--target-date` ya paso se evalua ahi; si no, hoy (`target_reached: false` → resultado provisional, dilo).
-- COMPRAR acierta si `return_pct > 0` (mejor aun si `alpha_pct > 0`); VENDER acierta si el precio cae. Con stop loss, usa `min_price_in_window` / `max_price_in_window` para ver si habria saltado.
-- Con varias señales del mismo analista, resume tasa de acierto (aciertos / evaluadas) y alpha medio.
+- COMPRAR acierta si `return_pct > 0` (mejor aun si `alpha_pct > 0`); VENDER acierta si el precio cae. `return_pct` incluye dividendos; `price_return_pct` es solo precio.
+- Si el analista dio stop u objetivo, audita cada valor por separado con sus niveles: `--tickers SAN.MC --side BUY --stop 9.80 --target-price 11.50`. `first_event` dice que se toco antes (`stop`, `target` o `ambiguous_same_day`). Los niveles se comparan con maximos y minimos intradia nominales, como en el grafico del inversor.
+- Lee `warnings` y comprueba `currency`/`exchange`: un valor español debe cotizar en EUR en `MCE`. El CLI corrige `SAN` → `SAN.MC` e `IBEX` → `^IBEX`; si el usuario quiere de verdad el ADR de Nueva York, usa `--raw-tickers`.
+- Para analistas que ajustan niveles a diario, audita desde el **primer** video en que dieron la señal, no desde el ultimo nivel corregido. Si el nivel se ha movido, di cuando y cuanto ("soporte fijado en 11,80 € el 15/10 y rebajado a 11,15 € el 22/10").
+- Con varias señales del mismo analista, resume tasa de acierto (aciertos / evaluadas) y alpha medio frente al indice: comparar solo contra cero oculta el coste de oportunidad de no haber estado en el indice.
 
 ### 5. Cartera (`portfolio`)
 
@@ -80,11 +83,18 @@ Cartera local en `~/.fintube/portfolio.json`:
 
 ```bash
 uv run scripts/fintube_cli.py portfolio --action list
-uv run scripts/fintube_cli.py portfolio --action add --ticker SAN.MC --shares 500 --buy-price 10.45 --analyst "Alberto Iturralde" --recommendation BUY --target-date 2026-11-29
-uv run scripts/fintube_cli.py portfolio --action remove --ticker SAN.MC
+uv run scripts/fintube_cli.py portfolio --action add --ticker SAN.MC --shares 500 --buy-price 10.45 --buy-date 2026-10-10 --analyst "Alberto Iturralde" --recommendation BUY
+uv run scripts/fintube_cli.py portfolio --action remove --ticker SAN.MC --lot-id 3
 ```
 
-Señala cualquier contradiccion entre posiciones abiertas y señales nuevas (p. ej. tiene SAN.MC y el analista ahora dice VENDER). Pide confirmacion antes de añadir o borrar posiciones.
+Cada `add` es un lote nuevo; `list` devuelve en `summary` las acciones totales y el precio medio ponderado por ticker. Para borrar, `remove` exige `--lot-id` (o `--all-lots`); sin el, devuelve los lotes para que preguntes cual. Pide confirmacion antes de añadir o borrar.
+
+**Alertas de cartera: datos, nunca consejos.** Recomendar a una persona concreta que compre o venda lo que tiene es asesoramiento financiero, reservado en España a entidades autorizadas por la CNMV, y un descargo final no lo cambia. Presenta las coincidencias como un cruce de hechos:
+
+- Bien: "Tienes 700 acciones de SAN.MC (precio medio 10,66 €). En el video del 26/10 el analista da señal de VENTA por debajo de 11,20 € [00:14:32]."
+- Mal: "Te recomiendo vender tus Santander" / "Deberias proteger beneficios".
+
+No uses imperativos ni valoraciones sobre lo que el usuario deberia hacer, aunque te lo pida; si insiste, explica que la skill solo informa de lo que dicen los analistas y de los precios.
 
 ## Gotchas
 
@@ -93,7 +103,7 @@ Señala cualquier contradiccion entre posiciones abiertas y señales nuevas (p. 
 - **El RSS solo trae los ~15 ultimos videos.** En canales que suben mucho (Capital Radio, ~15 al dia) eso es un solo dia. Para videos mas antiguos pide la URL al usuario.
 - **Los subtitulos suelen ser automaticos** (`is_generated: true`) y deforman nombres y cifras (empresas mal transcritas, "1 75" por "1,75 %"). Deduce la empresa por contexto, marca la señal como `ambiguous` si dudas y no inventes niveles de precio.
 - **YouTube bloquea a veces la descarga de subtitulos** desde IPs de servidores en la nube (error de tipo `RequestBlocked`/`IpBlocked`). Explicalo y sugiere ejecutar la skill en el ordenador del usuario; no resumas el video sin transcripcion.
-- **Yahoo usa tickers con sufijo de mercado** (`.MC` Madrid). Si `audit` responde "Sin datos", el ticker esta mal, no el analista.
+- **Yahoo usa tickers con sufijo de mercado** (`.MC` Madrid). Sin sufijo, `IAG` es una minera de oro canadiense y `SAN` el ADR en dolares. Si `audit` responde "Sin datos" o la divisa no es EUR, el ticker esta mal, no el analista.
 - **En apps de chat con sandbox** la cartera de `~/.fintube` puede borrarse al cerrar la sesion. Avisa al usuario de que solo persiste en agentes locales.
 
 ## Salida

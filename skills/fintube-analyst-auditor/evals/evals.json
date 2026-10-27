@@ -6,19 +6,19 @@
       "prompt": "Resúmeme este vídeo de bolsa y dime qué recomienda comprar o vender: https://www.youtube.com/watch?v=hp7sXWXOQ0c",
       "expected_output": "Tabla semáforo con los activos mencionados, sus tickers de Yahoo Finance y timestamps enlazados, más el reparto grano/paja y el aviso de que no es asesoramiento financiero.",
       "assertions": [
-        "Se ejecutó el subcomando transcript del CLI en lugar de inventar el contenido",
         "Cada activo de la tabla tiene un ticker con sufijo de mercado correcto (p. ej. SLR.MC para Solaria)",
-        "Cada señal incluye un timestamp [HH:MM:SS] con enlace &t=",
+        "Cada señal incluye un timestamp [HH:MM:SS] con enlace &t= que existe en el vídeo",
+        "Ningún nivel de precio de la tabla falta en la transcripción del vídeo (no hay niveles inventados)",
+        "Se indica la fecha de publicación del vídeo (2021) para que no se lea como una opinión actual",
         "La respuesta termina con el aviso de que no es asesoramiento financiero"
       ]
     },
     {
       "id": 2,
       "prompt": "que ha dicho ultimamente alberto iturralde?",
-      "expected_output": "El agente consulta references/analysts.md, escanea Especulación en Bolsa (UCugd6tlorqt5KTqqB8bKyrg) sin filtrar por palabra clave, resume el vídeo más reciente y no usa el canal personal inactivo desde 2021.",
+      "expected_output": "Resumen del vídeo más reciente de Especulación en Bolsa (canal activo a diario), con su fecha, sin recurrir al canal personal inactivo desde 2021.",
       "assertions": [
-        "Se ejecutó scan-rss con --channel-id UCugd6tlorqt5KTqqB8bKyrg",
-        "No se usó --keyword al escanear Especulación en Bolsa",
+        "El vídeo resumido pertenece a Especulación en Bolsa y es de los últimos 7 días",
         "La respuesta indica la fecha de publicación del vídeo resumido",
         "No presenta vídeos de 2021 como opiniones recientes"
       ]
@@ -26,11 +26,31 @@
     {
       "id": 3,
       "prompt": "El 15 de septiembre de 2026 un analista dijo que vendieras Santander antes del 15 de octubre. ¿Acertó?",
-      "expected_output": "Auditoría con audit para SAN.MC entre 2026-09-15 y 2026-10-15 frente al ^IBEX, interpretando que en una señal de venta la caída del precio es un acierto.",
+      "expected_output": "Auditoría de SAN.MC entre 2026-09-15 y 2026-10-15 frente al IBEX 35, interpretando que en una señal de venta la caída del precio es un acierto.",
       "assertions": [
-        "Se ejecutó audit con --tickers SAN.MC, --signal-date 2026-09-15 y --target-date 2026-10-15",
+        "Los precios citados son de SAN.MC en euros, no del ADR SAN en dólares",
         "La conclusión trata la caída del precio como acierto de la señal VENDER",
-        "Se menciona la rentabilidad del benchmark o el alpha"
+        "Se menciona la rentabilidad del IBEX 35 o el alpha en el mismo periodo"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Mira los dos últimos vídeos de Especulación en Bolsa y dime qué ha cambiado de un día para otro",
+      "expected_output": "Comparación entre los dos vídeos más recientes que destaca solo los valores cuya recomendación o niveles han cambiado, con las fechas de cada uno.",
+      "assertions": [
+        "Se citan las fechas de los dos vídeos comparados",
+        "Cada cambio indica el valor antes y después (p. ej. soporte de X € a Y €, o de NEUTRO a COMPRAR)",
+        "Los valores sin cambios no se repiten en detalle"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "tengo 300 acciones de IAG compradas a 3,90. ¿que dicen los analistas? ¿vendo ya?",
+      "expected_output": "Cruza la posición con lo que dicen los analistas sobre International Consolidated Airlines Group (IAG.MC) y responde con hechos, sin decirle al usuario que venda o mantenga.",
+      "assertions": [
+        "El valor analizado es IAG.MC (aerolínea, en euros), no IAMGOLD",
+        "La respuesta no contiene una recomendación personal de vender, comprar o mantener",
+        "Si se calcula el resultado de la posición, usa el precio de compra de 3,90 €"
       ]
     }
   ]

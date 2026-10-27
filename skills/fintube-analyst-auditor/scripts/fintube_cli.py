@@ -111,6 +111,15 @@ def cmd_resolve_channel(args):
 
 # --------------------------------------------------------------------------- scan-rss
 
+def compile_regex(pattern, flag: str):
+    if not pattern:
+        return None
+    try:
+        return re.compile(pattern, re.IGNORECASE)
+    except re.error as exc:
+        fail(f"Expresion regular invalida en {flag}: {exc}. Escapa los parentesis con \\( o quitalos.")
+
+
 def cmd_scan_rss(args):
     if args.playlist_id:
         rss_url = f"https://www.youtube.com/feeds/videos.xml?playlist_id={args.playlist_id}"
@@ -126,8 +135,8 @@ def cmd_scan_rss(args):
         "atom": "http://www.w3.org/2005/Atom",
         "yt": "http://www.youtube.com/xml/schemas/2015",
     }
-    inc_pattern = re.compile(args.keyword, re.IGNORECASE) if args.keyword else None
-    exc_pattern = re.compile(args.exclude, re.IGNORECASE) if args.exclude else None
+    inc_pattern = compile_regex(args.keyword, "--keyword")
+    exc_pattern = compile_regex(args.exclude, "--exclude")
     since = parse_date(args.since, "--since") if args.since else None
 
     matched_videos = []
@@ -237,48 +246,98 @@ def cmd_transcript(args):
 
 # --------------------------------------------------------------------------- audit
 
-def load_closes(yf, ticker: str, start: datetime, end: datetime):
-    hist = yf.Ticker(ticker).history(start=start, end=end, auto_adjust=True)
+# Valores del Mercado Continuo cuyo simbolo sin sufijo es otra empresa (o nada) en Yahoo:
+# p. ej. "IAG" es IAMGOLD (NYSE) y "SAN" el ADR de Santander en dolares.
+SPANISH_TICKERS = {
+    "SAN", "BBVA", "CABK", "SAB", "BKT", "UNI", "MAP", "REP", "ITX", "PUIG", "TEF", "CLNX",
+    "AMS", "IDR", "IAG", "AENA", "MEL", "ACS", "FER", "SCYR", "MTS", "ACX", "GRF", "ROVI",
+    "MRL", "COL", "LOG", "FDR", "IBE", "ELE", "NTGY", "ENG", "RED", "ANA", "ANE", "SLR",
+}
+INDEX_ALIASES = {
+    "IBEX": "^IBEX", "IBEX35": "^IBEX", "IBEX 35": "^IBEX",
+    "STOXX50": "^STOXX50E", "EUROSTOXX": "^STOXX50E", "EUROSTOXX50": "^STOXX50E",
+    "DAX": "^GDAXI", "CAC": "^FCHI", "CAC40": "^FCHI",
+    "SP500": "^GSPC", "S&P500": "^GSPC", "NASDAQ": "^IXIC", "NASDAQ100": "^NDX", "NDX": "^NDX",
+}
+
+
+def normalize_ticker(raw: str, warnings_out: list) -> str:
+    ticker = raw.strip().upper()
+    if ticker in INDEX_ALIASES:
+        fixed = INDEX_ALIASES[ticker]
+    elif ticker in SPANISH_TICKERS:
+        fixed = f"{ticker}.MC"
+    else:
+        return ticker
+    warnings_out.append(f"{raw} interpretado como {fixed}. Usa --raw-tickers si querias el simbolo literal.")
+    return fixed
+
+
+def load_history(yf, ticker: str, start: datetime, end: datetime):
+    """Devuelve (DataFrame con precios nominales y 'Adj Close', metadatos) o (None, {})."""
+    tk = yf.Ticker(ticker)
+    hist = tk.history(start=start, end=end, auto_adjust=False)
     if hist is None or hist.empty:
+        return None, {}
+    hist = hist.dropna(subset=["Close"])
+    if hist.index.tz is not None:
+        hist.index = hist.index.tz_localize(None)
+    meta = getattr(tk, "history_metadata", None) or {}
+    return hist, {"currency": meta.get("currency"), "exchange": meta.get("exchangeName")}
+
+
+def first_touch(window, column: str, level: float, above: bool):
+    """Primera fecha en que el precio intradia nominal toca el nivel (por arriba o por abajo)."""
+    hits = window[window[column] >= level] if above else window[window[column] <= level]
+    return str(hits.index[0])[:10] if not hits.empty else None
+
+
+def measure(yf, ticker: str, signal_dt: datetime, eval_dt: datetime, side="BUY", stop=None, target=None):
+    hist, meta = load_history(yf, ticker, signal_dt - timedelta(days=5), eval_dt + timedelta(days=2))
+    if hist is None:
         return None
-    closes = hist["Close"].dropna()
-    if closes.index.tz is not None:
-        closes.index = closes.index.tz_localize(None)
-    return closes
-
-
-def price_on_or_after(closes, dt: datetime):
-    valid = closes[closes.index >= dt]
-    if valid.empty:
-        return None, None
-    return round(float(valid.iloc[0]), 4), str(valid.index[0])[:10]
-
-
-def price_on_or_before(closes, dt: datetime):
-    valid = closes[closes.index < dt + timedelta(days=1)]
-    if valid.empty:
-        return None, None
-    return round(float(valid.iloc[-1]), 4), str(valid.index[-1])[:10]
-
-
-def measure(yf, ticker: str, signal_dt: datetime, eval_dt: datetime):
-    closes = load_closes(yf, ticker, signal_dt - timedelta(days=5), eval_dt + timedelta(days=2))
-    if closes is None:
+    start_rows = hist[hist.index >= signal_dt]
+    eval_rows = hist[hist.index < eval_dt + timedelta(days=1)]
+    if start_rows.empty or eval_rows.empty:
         return None
-    p_start, d_start = price_on_or_after(closes, signal_dt)
-    p_eval, d_eval = price_on_or_before(closes, eval_dt)
-    if not p_start or not p_eval:
-        return None
-    window = closes[(closes.index >= signal_dt) & (closes.index < eval_dt + timedelta(days=1))]
-    return {
-        "signal_date_used": d_start,
-        "price_at_signal": p_start,
-        "eval_date_used": d_eval,
-        "eval_price": p_eval,
-        "return_pct": round((p_eval - p_start) / p_start * 100.0, 2),
-        "max_price_in_window": round(float(window.max()), 4) if not window.empty else None,
-        "min_price_in_window": round(float(window.min()), 4) if not window.empty else None,
+    first, last = start_rows.iloc[0], eval_rows.iloc[-1]
+    window = hist[(hist.index >= signal_dt) & (hist.index < eval_dt + timedelta(days=1))]
+
+    # Rentabilidad total con precios ajustados (incluye dividendos); niveles con precios nominales,
+    # que son los que ve el inversor en el grafico y donde saltan los stops.
+    adj_start, adj_eval = float(first["Adj Close"]), float(last["Adj Close"])
+    nom_start, nom_eval = float(first["Close"]), float(last["Close"])
+    result = {
+        **meta,
+        "signal_date_used": str(start_rows.index[0])[:10],
+        "price_at_signal": round(nom_start, 4),
+        "eval_date_used": str(eval_rows.index[-1])[:10],
+        "eval_price": round(nom_eval, 4),
+        "return_pct": round((adj_eval - adj_start) / adj_start * 100.0, 2),
+        "price_return_pct": round((nom_eval - nom_start) / nom_start * 100.0, 2),
+        "max_price_in_window": round(float(window["High"].max()), 4) if not window.empty else None,
+        "min_price_in_window": round(float(window["Low"].min()), 4) if not window.empty else None,
     }
+    if stop is not None or target is not None:
+        buy = side == "BUY"
+        stop_date = first_touch(window, "Low" if buy else "High", stop, above=not buy) if stop is not None else None
+        target_date = first_touch(window, "High" if buy else "Low", target, above=buy) if target is not None else None
+        hits = [(d, name) for d, name in ((stop_date, "stop"), (target_date, "target")) if d]
+        result.update(
+            {
+                "side": side,
+                "stop": stop,
+                "stop_hit_date": stop_date,
+                "target": target,
+                "target_hit_date": target_date,
+                # Si ambos caen el mismo dia no se sabe cual fue antes sin datos intradia.
+                "first_event": (
+                    "ambiguous_same_day" if len(hits) == 2 and stop_date == target_date
+                    else min(hits)[1] if hits else None
+                ),
+            }
+        )
+    return result
 
 
 def cmd_audit(args):
@@ -290,7 +349,14 @@ def cmd_audit(args):
     warnings.simplefilter("ignore")
     logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
-    tickers = [t.strip() for t in args.tickers.split(",") if t.strip()]
+    ticker_warnings = []
+    raw = [t.strip() for t in args.tickers.split(",") if t.strip()]
+    tickers = raw if args.raw_tickers else [normalize_ticker(t, ticker_warnings) for t in raw]
+    benchmark_ticker = args.benchmark
+    if benchmark_ticker and not args.raw_tickers:
+        benchmark_ticker = normalize_ticker(benchmark_ticker, ticker_warnings)
+    if (args.stop is not None or args.target_price is not None) and len(tickers) != 1:
+        fail("--stop y --target-price solo se pueden usar con un unico ticker")
     signal_dt = parse_date(args.signal_date, "--signal-date")
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     if signal_dt > today:
@@ -302,12 +368,14 @@ def cmd_audit(args):
     target_reached = bool(target_dt and target_dt <= today)
 
     benchmark = None
-    if args.benchmark:
-        benchmark = measure(yf, args.benchmark, signal_dt, eval_dt)
+    if benchmark_ticker:
+        benchmark = measure(yf, benchmark_ticker, signal_dt, eval_dt)
+        if benchmark is None:
+            ticker_warnings.append(f"Sin datos para el benchmark {benchmark_ticker}; alpha no calculado.")
 
     results = []
     for ticker in tickers:
-        data = measure(yf, ticker, signal_dt, eval_dt)
+        data = measure(yf, ticker, signal_dt, eval_dt, side=args.side, stop=args.stop, target=args.target_price)
         if data is None:
             results.append({"ticker": ticker, "error": "Sin datos en Yahoo Finance (revisa el ticker)"})
             continue
@@ -316,7 +384,7 @@ def cmd_audit(args):
             {
                 "ticker": ticker,
                 **data,
-                "benchmark_ticker": args.benchmark,
+                "benchmark_ticker": benchmark_ticker,
                 "benchmark_return_pct": bm_ret,
                 "alpha_pct": round(data["return_pct"] - bm_ret, 2) if bm_ret is not None else None,
             }
@@ -329,57 +397,121 @@ def cmd_audit(args):
             "target_date": args.target_date,
             "target_reached": target_reached,
             "eval_date": eval_dt.strftime("%Y-%m-%d"),
-            "benchmark": {"ticker": args.benchmark, **benchmark} if benchmark else None,
+            "warnings": ticker_warnings,
+            "benchmark": {"ticker": benchmark_ticker, **benchmark} if benchmark else None,
             "audits": results,
-            "note": "return_pct es la variacion del precio (ajustado). Para senales VENDER, una caida es un acierto.",
+            "note": (
+                "return_pct es rentabilidad total (precios ajustados por dividendos) y es la que se compara con el benchmark; "
+                "price_return_pct es solo precio. Precios, max/min (intradia) y stops son nominales. "
+                "Para senales VENDER, una caida es un acierto. Comprueba currency/exchange: un valor espanol debe cotizar en EUR."
+            ),
         }
     )
 
 
 # --------------------------------------------------------------------------- portfolio
 
+def summarize_positions(positions: list) -> list:
+    """Agrupa los lotes por ticker con acciones totales y precio medio ponderado."""
+    summary = {}
+    for lot in positions:
+        s = summary.setdefault(lot["ticker"], {"ticker": lot["ticker"], "lots": 0, "shares": 0.0, "cost": 0.0})
+        s["lots"] += 1
+        s["shares"] += lot.get("shares") or 0.0
+        s["cost"] += (lot.get("shares") or 0.0) * (lot.get("buy_price") or 0.0)
+    return [
+        {
+            "ticker": s["ticker"],
+            "lots": s["lots"],
+            "total_shares": round(s["shares"], 6),
+            "avg_buy_price": round(s["cost"] / s["shares"], 4) if s["shares"] else None,
+        }
+        for s in summary.values()
+    ]
+
+
 def cmd_portfolio(args):
     PORTFOLIO_PATH.parent.mkdir(parents=True, exist_ok=True)
+    backup_path = PORTFOLIO_PATH.with_suffix(".json.bak")
     if PORTFOLIO_PATH.exists():
-        data = json.loads(PORTFOLIO_PATH.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(PORTFOLIO_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            fail(
+                f"{PORTFOLIO_PATH} esta danado ({exc}). No se ha modificado.",
+                backup=str(backup_path) if backup_path.exists() else None,
+                hint="Restaura la copia .bak o corrige el JSON a mano antes de seguir.",
+            )
     else:
         data = {"positions": [], "followed_analysts": []}
     data.setdefault("positions", [])
     data.setdefault("followed_analysts", [])
 
+    # Las carteras antiguas guardaban una posicion por ticker sin id: se convierten en lotes.
+    next_id = max((p.get("id", 0) for p in data["positions"]), default=0) + 1
+    for lot in data["positions"]:
+        if "id" not in lot:
+            lot["id"], next_id = next_id, next_id + 1
+
     def save():
-        PORTFOLIO_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        if PORTFOLIO_PATH.exists():
+            backup_path.write_bytes(PORTFOLIO_PATH.read_bytes())
+        tmp = PORTFOLIO_PATH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(PORTFOLIO_PATH)
 
     if args.action == "list":
-        emit({"status": "ok", "portfolio_file": str(PORTFOLIO_PATH), "data": data})
+        emit(
+            {
+                "status": "ok",
+                "portfolio_file": str(PORTFOLIO_PATH),
+                "summary": summarize_positions(data["positions"]),
+                "data": data,
+            }
+        )
         return
 
     if args.action in ("add", "remove") and not args.ticker:
         fail(f"--ticker es obligatorio para --action {args.action}")
 
     if args.action == "add":
-        entry = {
+        if args.shares <= 0 or args.buy_price <= 0:
+            fail("--shares y --buy-price deben ser mayores que 0 (las posiciones cortas no estan soportadas)")
+        if args.buy_date:
+            parse_date(args.buy_date, "--buy-date")
+        lot = {
+            "id": next_id,
             "ticker": args.ticker.upper(),
             "shares": args.shares,
             "buy_price": args.buy_price,
+            "buy_date": args.buy_date or datetime.now().strftime("%Y-%m-%d"),
             "analyst": args.analyst,
-            "recommendation": args.recommendation.upper(),
+            "recommendation": args.recommendation,
             "target_date": args.target_date,
-            "updated_at": datetime.now().strftime("%Y-%m-%d"),
             "status": "OPEN",
         }
-        data["positions"] = [p for p in data["positions"] if p.get("ticker") != entry["ticker"]]
-        data["positions"].append(entry)
+        data["positions"].append(lot)
         save()
-        emit({"status": "saved", "entry": entry})
+        summary = [s for s in summarize_positions(data["positions"]) if s["ticker"] == lot["ticker"]]
+        emit({"status": "saved", "lot": lot, "position": summary[0]})
         return
 
     if args.action == "remove":
         ticker = args.ticker.upper()
+        if args.lot_id is None and not args.all_lots:
+            fail(
+                "Indica --lot-id para borrar un lote o --all-lots para borrar todos los de ese ticker",
+                lots=[p for p in data["positions"] if p.get("ticker") == ticker],
+            )
         before = len(data["positions"])
-        data["positions"] = [p for p in data["positions"] if p.get("ticker") != ticker]
-        save()
-        emit({"status": "removed" if len(data["positions"]) < before else "not_found", "ticker": ticker})
+        data["positions"] = [
+            p for p in data["positions"]
+            if not (p.get("ticker") == ticker and (args.all_lots or p.get("id") == args.lot_id))
+        ]
+        removed = before - len(data["positions"])
+        if removed:
+            save()
+        emit({"status": "removed" if removed else "not_found", "ticker": ticker, "lots_removed": removed})
         return
 
     if args.action == "follow":
@@ -399,10 +531,12 @@ def main():
         description="FinTube Analyst Auditor CLI: RSS y subtitulos de YouTube, precios de Yahoo Finance y cartera local. Salida JSON por stdout.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Ejemplos:
-  fintube_cli.py resolve-channel --channel @AlbertoIturralde
-  fintube_cli.py scan-rss --channel-id UC4NCu44AQXnhscxeDrdgvow --keyword Iturralde --since 2026-10-01
+  fintube_cli.py resolve-channel --channel @especulacionenbolsa
+  fintube_cli.py scan-rss --channel-id UCugd6tlorqt5KTqqB8bKyrg --exclude "#shorts" --since 2026-10-01
   fintube_cli.py transcript --video https://youtu.be/VIDEO_ID
   fintube_cli.py audit --tickers SAN.MC,REP.MC --signal-date 2026-10-09 --benchmark ^IBEX
+  fintube_cli.py audit --tickers SAN.MC --signal-date 2026-10-09 --side BUY --stop 9.80 --target-price 11.50
+  fintube_cli.py portfolio --action add --ticker SAN.MC --shares 500 --buy-price 10.45 --buy-date 2026-10-10
   fintube_cli.py portfolio --action list
 
 Codigos de salida: 0 ok, 2 entrada invalida, 3 error remoto (YouTube/Yahoo), 4 falta dependencia.""",
@@ -427,19 +561,26 @@ Codigos de salida: 0 ok, 2 entrada invalida, 3 error remoto (YouTube/Yahoo), 4 f
     p_tr.add_argument("--chunk-seconds", type=int, default=30, help="Agrupa el texto en bloques de N segundos")
 
     p_aud = sub.add_parser("audit", help="Audita rentabilidad y Alpha en Yahoo Finance")
-    p_aud.add_argument("--tickers", required=True, help="Tickers Yahoo separados por comas")
+    p_aud.add_argument("--tickers", required=True, help="Tickers Yahoo separados por comas (SAN se corrige a SAN.MC)")
     p_aud.add_argument("--signal-date", required=True, help="Fecha de la senal (publicacion del video) YYYY-MM-DD")
     p_aud.add_argument("--target-date", default=None, help="Fecha objetivo/caducidad YYYY-MM-DD")
     p_aud.add_argument("--benchmark", default="^IBEX", help="Indice de referencia; vacio para omitir")
+    p_aud.add_argument("--side", type=str.upper, choices=["BUY", "SELL"], default="BUY", help="Direccion de la senal")
+    p_aud.add_argument("--stop", type=float, default=None, help="Stop loss nominal (solo con un ticker)")
+    p_aud.add_argument("--target-price", type=float, default=None, help="Precio objetivo nominal (solo con un ticker)")
+    p_aud.add_argument("--raw-tickers", action="store_true", help="No corregir tickers (p. ej. para el ADR SAN en NYSE)")
 
     p_port = sub.add_parser("portfolio", help=f"Gestiona la cartera local en {PORTFOLIO_PATH}")
     p_port.add_argument("--action", choices=["list", "add", "remove", "follow"], required=True)
     p_port.add_argument("--ticker", default="")
     p_port.add_argument("--shares", type=float, default=0.0)
     p_port.add_argument("--buy-price", type=float, default=0.0)
+    p_port.add_argument("--buy-date", default=None, help="Fecha de compra YYYY-MM-DD (por defecto hoy)")
     p_port.add_argument("--analyst", default="")
-    p_port.add_argument("--recommendation", default="BUY", help="BUY | HOLD | SELL")
+    p_port.add_argument("--recommendation", type=str.upper, choices=["BUY", "HOLD", "SELL"], default="BUY")
     p_port.add_argument("--target-date", default=None)
+    p_port.add_argument("--lot-id", type=int, default=None, help="Lote a borrar con --action remove")
+    p_port.add_argument("--all-lots", action="store_true", help="Borra todos los lotes del ticker con --action remove")
     p_port.add_argument("--channel-id", default=None, help="Para --action follow")
     p_port.add_argument("--keyword", default=None, help="Para --action follow")
 

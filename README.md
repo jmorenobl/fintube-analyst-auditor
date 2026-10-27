@@ -8,7 +8,7 @@
 
 <br>
 
-[![Versión](https://img.shields.io/badge/versión-0.1.0-34d399?style=for-the-badge)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/versión-0.2.0-34d399?style=for-the-badge)](CHANGELOG.md)
 [![Licencia EUPL 1.2](https://img.shields.io/badge/licencia-EUPL_1.2-0f2e2a?style=for-the-badge)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/estándar-Agent_Skills-0b1626?style=for-the-badge)](https://agentskills.io)
 [![Gratis](https://img.shields.io/badge/sin_API_de_pago-gratis-fbbf24?style=for-the-badge)](#-requisitos)
@@ -283,7 +283,7 @@ uvx --from "git+https://github.com/agentskills/agentskills#subdirectory=skills-r
 **Publicar una versión:** actualiza la versión en `SKILL.md`, `.claude-plugin/plugin.json` y `CHANGELOG.md`, y crea la etiqueta:
 
 ```bash
-git tag v0.1.0 && git push --tags
+git tag vX.Y.Z && git push --tags
 ```
 
 GitHub Actions genera el ZIP y la release.
