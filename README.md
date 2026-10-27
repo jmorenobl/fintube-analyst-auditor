@@ -115,14 +115,20 @@ La skill viene con estos canales comprobados, así que basta con decir el nombre
 
 ## 📥 Instalación
 
-### ¿Qué app usas?
+### ¿Funciona en mi app?
 
-| Si usas… | Ve a… | Dificultad |
-| :-- | :-- | :-: |
-| Claude Code, Codex, Gemini CLI, Antigravity, Cursor, Windsurf, OpenCode, Copilot | [Opción 1 · Pídeselo a tu asistente](#opcion-1) | ⭐ |
-| Claude en la web o en la app de escritorio | [Opción 2 · Claude](#opcion-2) | ⭐⭐ |
-| ChatGPT | [Opción 3 · ChatGPT](#opcion-3) | ⭐⭐ |
-| La terminal (ya sabes lo que es) | [Opción 4 · Comandos](#opcion-4) | ⭐⭐⭐ |
+La skill necesita **ejecutar un pequeño programa** que descarga los subtítulos de YouTube y los precios de Yahoo Finance. No todas las apps pueden hacerlo, aunque te dejen instalar la skill:
+
+| App | ¿Funciona? | Ve a… |
+| :-- | :-- | :-- |
+| Claude Code, Codex, Gemini CLI, Antigravity, Cursor, Windsurf, OpenCode, Copilot | ✅ **Sí, completa.** Trabajan en tu ordenador. | [Opción 1](#opcion-1) ⭐ |
+| Claude (web o app de escritorio) | ⚠️ **Con límites.** Funciona, pero YouTube suele bloquear los subtítulos desde la nube y el historial se pierde al cerrar el chat. | [Opción 2](#opcion-2) ⭐⭐ |
+| ChatGPT (Business, Enterprise y Edu) | ⚠️ **Con límites.** Los mismos que Claude en la web. | [Opción 3](#opcion-3) ⭐⭐ |
+| Gemini (web o app) | ❌ **No.** Te deja subirla, pero solo lee las instrucciones: no ejecuta el programa, así que no tiene los subtítulos reales, ni precios, ni historial. Puede darte minutos y cifras aproximados o inventados. Usa **Gemini CLI**. | [Opción 1](#opcion-1) |
+| La terminal (ya sabes lo que es) | ✅ **Sí, completa.** | [Opción 4](#opcion-4) ⭐⭐⭐ |
+
+> [!WARNING]
+> Si tu asistente contesta **sin** decirte que ha descargado la transcripción, desconfía de los minutos y los niveles que te dé: probablemente tu app no puede ejecutar la skill. Mira [Algo no funciona](#-algo-no-funciona).
 
 <br>
 
@@ -157,6 +163,9 @@ lenguaje sencillo cómo instalarlos. Al terminar, dime cómo usarla.
 
 > [!IMPORTANT]
 > Sin el paso 3 la skill no puede descargar ni vídeos ni precios.
+
+> [!TIP]
+> En la **app de escritorio**, conecta una carpeta al chat (menú **+ → Añadir carpeta**). Así la skill se ejecuta en tu ordenador: YouTube bloquea menos y tu historial de señales se conserva entre conversaciones.
 
 <br>
 
@@ -226,11 +235,6 @@ gemini skills install https://github.com/jmorenobl/fintube-analyst-auditor --pat
 
 ## 💡 Lo que conviene saber
 
-<details>
-<summary><b>🏠 ¿Por qué funciona mejor en mi ordenador que en la web?</b></summary>
-<br>
-YouTube a veces bloquea la descarga de subtítulos desde los servidores de las apps en la nube (Claude.ai, ChatGPT). Si te pasa, usa la <a href="#opcion-1">opción 1</a> con un asistente que trabaje en tu ordenador.
-</details>
 
 <details>
 <summary><b>🎙️ ¿Me puedo fiar de lo que entiende del vídeo?</b></summary>
@@ -255,6 +259,18 @@ Solo cuenta los vídeos que tu asistente ha registrado: el historial empieza el 
 <br>
 Muchos analistas no publican en su propio canal: el canal personal de Alberto Iturralde, por ejemplo, no sube vídeos desde 2021. Los canales de la tabla de <a href="#-analistas-que-ya-conoce">analistas</a> ya están comprobados. Para otros, dile a tu asistente qué canal quieres que revise.
 </details>
+
+<br>
+
+## 🆘 Algo no funciona
+
+| Lo que ves | Por qué pasa | Qué hacer |
+| :-- | :-- | :-- |
+| Responde con un resumen o un semáforo, pero dice que "no pudo ejecutar" o "expandir" ficheros, o no menciona la transcripción | Tu app no ejecuta programas (le pasa a Gemini en la web y en la app) | Usa una app de la [tabla de compatibilidad](#funciona-en-mi-app). No te fíes de esos minutos ni niveles |
+| `RequestBlocked` o "YouTube bloquea la descarga" desde Claude o ChatGPT en la nube | YouTube bloquea los servidores en la nube | Usa un asistente en tu ordenador ([opción 1](#opcion-1)) o, en la app de escritorio de Claude, conecta una carpeta |
+| `IpBlocked`, también en tu ordenador | Muchas descargas seguidas: YouTube bloquea tu conexión unas horas | Espera unas horas o cambia de red (por ejemplo, los datos del móvil). Mientras, copia la transcripción desde YouTube (**Más → Mostrar transcripción**) y pégala en el chat |
+| "El historial está vacío" aunque ya registraste vídeos | Las apps en la nube no ven tu ordenador: el historial se guarda en su servidor y se borra | Usa un asistente en tu ordenador o conecta una carpeta en la app de escritorio de Claude |
+| El vídeo de hoy no tiene transcripción | Es un directo que aún no ha empezado o acaba de terminar | Espera a que termine (los subtítulos tardan un rato) o pide el del día anterior |
 
 <br>
 

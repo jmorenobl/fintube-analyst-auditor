@@ -10,7 +10,7 @@ YouTube bloqueó la descarga de subtítulos (`IpBlocked`) tras muchas descargas 
 uv run skills/fintube-analyst-auditor/scripts/fintube_cli.py transcript --video g60ppt9frmw | head -c 300
 ```
 
-Si sigue bloqueado, espera unas horas o usa otra red. Las mejoras 1 a 4 se pueden hacer sin YouTube; solo las evals que descargan transcripciones lo necesitan.
+Si sigue bloqueado, espera unas horas o usa otra red. Las mejoras 1 a 4 y 6 se pueden hacer sin YouTube; solo las evals que descargan transcripciones lo necesitan.
 
 ## Mejoras a aplicar
 
@@ -33,6 +33,13 @@ Si sigue bloqueado, espera unas horas o usa otra red. Las mejoras 1 a 4 se puede
    - En el historial no hay ningún `stop_loss`: Especulación en Bolsa da soportes y objetivos, no stops. Revisar si la extracción guarda como `entry_level` niveles del tipo "si pierde X, fuera". La regla está en `signal_history.md`; quizá haga falta un ejemplo con su transcripción.
    - `scorecard` no cuenta como "mover la portería" alejar un objetivo mientras el precio va en contra (Moderna: 236 → 270 $ con el precio cayendo) ni hacer un objetivo de venta menos ambicioso (oro: 3.780 → 4.000 $). Valorar si se añade un `target_moved_away`.
    - `scan-rss` devuelve `matched_count: 15` pero lista 10 (`--limit 10` por defecto). Documentar el límite en SKILL.md o subir el valor por defecto.
+
+6. **Modo sin programa (apps que no ejecutan scripts).** La app de Gemini (web y escritorio) instala la skill, pero solo lee el SKILL.md: ni carga `references/` ni ejecuta `fintube_cli.py`. El 27/10 respondió con un semáforo y minutos que no podía haber sacado de una transcripción real, y solo al final mencionó que "el comando de expansión de ficheros no estaba disponible".
+   - Propuesta: un apartado corto al principio de SKILL.md. Si el CLI no se puede ejecutar, el agente lo dice en la primera línea, explica qué no puede hacer (subtítulos con minutos, precios, historial) y pide que el usuario pegue la transcripción (YouTube: Más → Mostrar transcripción). Nunca da minutos ni niveles que no haya leído en una transcripción.
+   - Lo mismo si la descarga falla (`RequestBlocked` en la nube, `IpBlocked`): ofrecer pegar la transcripción. La app de escritorio de Claude ya lo hizo bien sola; conviene que lo diga SKILL.md.
+   - Revisar que una transcripción pegada (sin `[HH:MM:SS]` o con el formato de YouTube "0:14") se procesa bien y se puede registrar en el historial.
+   - Probarlo: eval con un prompt que diga que no hay acceso a la terminal, y otra con una transcripción pegada.
+   - El README ya tiene la tabla de compatibilidad y la sección "Algo no funciona" (commit del 27/10).
 
 ## Cómo retomar las evals
 
