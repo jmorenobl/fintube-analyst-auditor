@@ -18,8 +18,10 @@ Todos los subcomandos imprimen JSON por stdout y salen con codigo != 0 si hay er
 import argparse
 import json
 import logging
+import math
 import re
 import sys
+import unicodedata
 import urllib.request
 import warnings
 import xml.etree.ElementTree as ET
@@ -27,6 +29,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PORTFOLIO_PATH = Path.home() / ".fintube" / "portfolio.json"
+SIGNALS_PATH = Path.home() / ".fintube" / "signals.json"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 
@@ -54,6 +57,34 @@ def parse_date(value: str, flag: str) -> datetime:
         return datetime.strptime(value, "%Y-%m-%d")
     except ValueError:
         fail(f"{flag} debe tener formato YYYY-MM-DD (recibido: {value!r})")
+
+
+def load_store(path: Path, default: dict) -> dict:
+    """Lee un JSON local de ~/.fintube; si esta danado no lo toca y remite a la copia .bak."""
+    backup_path = path.with_suffix(".json.bak")
+    if not path.exists():
+        return default
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("se esperaba un objeto JSON")
+        return data
+    except ValueError as exc:  # incluye json.JSONDecodeError
+        fail(
+            f"{path} esta danado ({exc}). No se ha modificado.",
+            backup=str(backup_path) if backup_path.exists() else None,
+            hint="Restaura la copia .bak o corrige el JSON a mano antes de seguir.",
+        )
+
+
+def save_store(path: Path, data: dict) -> None:
+    """Guarda con copia .bak de la version anterior y escritura atomica (tmp + rename)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        path.with_suffix(".json.bak").write_bytes(path.read_bytes())
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
 
 
 def extract_video_id(url_or_id: str) -> str:
@@ -273,17 +304,33 @@ def normalize_ticker(raw: str, warnings_out: list) -> str:
     return fixed
 
 
+# Historicos ya descargados por ticker: (inicio, fin, DataFrame o None, metadatos).
+# scorecard mide muchas ventanas del mismo valor y asi solo pide una vez cada ticker a Yahoo.
+_HISTORY_CACHE = {}
+
+
 def load_history(yf, ticker: str, start: datetime, end: datetime):
     """Devuelve (DataFrame con precios nominales y 'Adj Close', metadatos) o (None, {})."""
-    tk = yf.Ticker(ticker)
-    hist = tk.history(start=start, end=end, auto_adjust=False)
-    if hist is None or hist.empty:
+    cached = _HISTORY_CACHE.get(ticker)
+    if cached is None or start < cached[0] or end > cached[1]:
+        fetch_start, fetch_end = (start, end) if cached is None else (min(start, cached[0]), max(end, cached[1]))
+        tk = yf.Ticker(ticker)
+        hist = tk.history(start=fetch_start, end=fetch_end, auto_adjust=False)
+        meta = {}
+        if hist is not None and not hist.empty:
+            hist = hist.dropna(subset=["Close"])
+            if hist.index.tz is not None:
+                hist.index = hist.index.tz_localize(None)
+            raw_meta = getattr(tk, "history_metadata", None) or {}
+            meta = {"currency": raw_meta.get("currency"), "exchange": raw_meta.get("exchangeName")}
+        else:
+            hist = None
+        cached = _HISTORY_CACHE[ticker] = (fetch_start, fetch_end, hist, meta)
+    hist, meta = cached[2], cached[3]
+    if hist is None:
         return None, {}
-    hist = hist.dropna(subset=["Close"])
-    if hist.index.tz is not None:
-        hist.index = hist.index.tz_localize(None)
-    meta = getattr(tk, "history_metadata", None) or {}
-    return hist, {"currency": meta.get("currency"), "exchange": meta.get("exchangeName")}
+    window = hist[(hist.index >= start) & (hist.index < end)]
+    return (window, meta) if not window.empty else (None, {})
 
 
 def first_touch(window, column: str, level: float, above: bool):
@@ -431,19 +478,7 @@ def summarize_positions(positions: list) -> list:
 
 
 def cmd_portfolio(args):
-    PORTFOLIO_PATH.parent.mkdir(parents=True, exist_ok=True)
-    backup_path = PORTFOLIO_PATH.with_suffix(".json.bak")
-    if PORTFOLIO_PATH.exists():
-        try:
-            data = json.loads(PORTFOLIO_PATH.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            fail(
-                f"{PORTFOLIO_PATH} esta danado ({exc}). No se ha modificado.",
-                backup=str(backup_path) if backup_path.exists() else None,
-                hint="Restaura la copia .bak o corrige el JSON a mano antes de seguir.",
-            )
-    else:
-        data = {"positions": [], "followed_analysts": []}
+    data = load_store(PORTFOLIO_PATH, {"positions": [], "followed_analysts": []})
     data.setdefault("positions", [])
     data.setdefault("followed_analysts", [])
 
@@ -454,11 +489,7 @@ def cmd_portfolio(args):
             lot["id"], next_id = next_id, next_id + 1
 
     def save():
-        if PORTFOLIO_PATH.exists():
-            backup_path.write_bytes(PORTFOLIO_PATH.read_bytes())
-        tmp = PORTFOLIO_PATH.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp.replace(PORTFOLIO_PATH)
+        save_store(PORTFOLIO_PATH, data)
 
     if args.action == "list":
         emit(
@@ -524,11 +555,623 @@ def cmd_portfolio(args):
         emit({"status": "saved", "followed": follow})
 
 
+# --------------------------------------------------------------------------- signals (historial)
+
+# Se guarda lo que dijo cada video (una mencion por ticker); la vida de cada senal (apertura,
+# revisiones de niveles y cierre) se reconstruye recorriendo los videos por fecha. Asi reprocesar
+# un video lo sustituye en vez de duplicarlo y se pueden registrar videos antiguos mas tarde.
+SIGNAL_VALUES = ("BUY", "HOLD", "SELL", "CLOSE")
+LEVEL_FIELDS = ("entry_level", "stop_loss", "target_price")
+REVISABLE_FIELDS = LEVEL_FIELDS + ("expiry_date",)
+MENTION_TEXT_FIELDS = ("asset_name", "person", "confidence", "expiry_reason", "timestamp", "quote")
+CLOSE_REASONS = ("REVERSED", "CLOSED_BY_ANALYST", "EXPIRED", "ABANDONED")
+DEFAULT_ABANDON_AFTER = 5
+MIN_SAMPLE = 20
+ENTRY_TOLERANCE_PCT = 1.0  # entrada a menos de esta distancia del precio = compra/venta a mercado
+
+
+def analyst_key(name: str) -> str:
+    """'Especulación en  Bolsa' y 'especulacion en bolsa' son el mismo analista."""
+    plain = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+    return " ".join(plain.lower().split())
+
+
+def default_benchmark(ticker: str):
+    if ticker.startswith("^") or re.search(r"(=F|=X|-USD|-EUR)$", ticker):
+        return None  # indices, materias primas, divisas y cripto no tienen indice de referencia obvio
+    if ticker.endswith(".MC"):
+        return "^IBEX"
+    if re.search(r"\.(PA|DE|MI|AS|BR|LS|HE|IR|VI)$", ticker):
+        return "^STOXX50E"
+    return "^GSPC" if "." not in ticker else None
+
+
+def timestamp_url(video_id: str, timestamp):
+    match = re.fullmatch(r"\[?(?:(\d+):)?(\d{1,2}):(\d{2})\]?", (timestamp or "").strip())
+    if not match:
+        return None
+    hrs, mins, secs = (int(g or 0) for g in match.groups())
+    return f"https://www.youtube.com/watch?v={video_id}&t={hrs * 3600 + mins * 60 + secs}s"
+
+
+def read_json_input(source: str):
+    try:
+        text = sys.stdin.read() if source == "-" else Path(source).read_text(encoding="utf-8")
+    except OSError as exc:
+        fail(f"No se pudo leer --input {source}: {exc}")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        fail(f"--input no es JSON valido: {exc}")
+
+
+def check_date(value, where: str) -> str:
+    try:
+        datetime.strptime(str(value), "%Y-%m-%d")
+    except ValueError:
+        fail(f"{where} debe tener formato YYYY-MM-DD (recibido: {value!r})")
+    return str(value)
+
+
+def parse_level(value, where: str):
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+        fail(f"{where} debe ser un numero mayor que 0 o null, con punto decimal (recibido: {value!r})")
+    return float(value)
+
+
+def parse_video_record(payload, warnings_out: list) -> dict:
+    """Valida la entrada de 'signals --action record' y la deja en el formato guardado."""
+    if not isinstance(payload, dict):
+        fail("--input debe ser un objeto JSON con analyst, video_id, published_at y signals")
+    analyst = str(payload.get("analyst") or "").strip()
+    if not analyst:
+        fail("Falta analyst (p. ej. \"Especulacion en Bolsa\")")
+    video_id = extract_video_id(str(payload.get("video_id") or payload.get("url") or ""))
+    if not re.fullmatch(r"[0-9A-Za-z_-]{11}", video_id):
+        fail(f"video_id invalido: {video_id!r}")
+    published_at = check_date(payload.get("published_at"), "published_at")
+    if published_at > datetime.now().strftime("%Y-%m-%d"):
+        fail("published_at esta en el futuro")
+    raw_signals = payload.get("signals")
+    if not isinstance(raw_signals, list):
+        fail("Falta la lista signals (usa [] si el video no tiene senales: tambien cuenta para detectar abandonos)")
+
+    mentions, seen = [], {}
+    for i, raw in enumerate(raw_signals):
+        where = f"signals[{i}]"
+        if not isinstance(raw, dict):
+            fail(f"{where} debe ser un objeto")
+        for field in ("video_id", "published_at"):
+            if raw.get(field) not in (None, payload.get(field)):
+                fail(f"{where}.{field} no coincide con el del video: registra cada video por separado")
+        ticker_raw = str(raw.get("ticker") or "").strip()
+        if not ticker_raw or " " in ticker_raw:
+            fail(f"{where}.ticker invalido: {ticker_raw!r}")
+        ticker = normalize_ticker(ticker_raw, warnings_out)
+        if ticker in seen:
+            fail(f"{where}: {ticker} ya aparece en signals[{seen[ticker]}]. Deja una sola senal por valor y video (la ultima o la mas clara).")
+        seen[ticker] = i
+        signal = str(raw.get("signal") or "").strip().upper()
+        if signal not in SIGNAL_VALUES:
+            fail(f"{where}.signal debe ser uno de {', '.join(SIGNAL_VALUES)} (recibido: {raw.get('signal')!r})")
+        if "benchmark" in raw:
+            benchmark = normalize_ticker(raw["benchmark"], warnings_out) if raw["benchmark"] else None
+        else:
+            benchmark = default_benchmark(ticker)
+        mention = {"ticker": ticker, "signal": signal, "benchmark": benchmark}
+        for field in LEVEL_FIELDS:
+            mention[field] = parse_level(raw.get(field), f"{where}.{field}")
+        mention["expiry_date"] = check_date(raw["expiry_date"], f"{where}.expiry_date") if raw.get("expiry_date") else None
+        for field in MENTION_TEXT_FIELDS:
+            if raw.get(field) not in (None, ""):
+                mention[field] = str(raw[field])
+        mentions.append(mention)
+
+    record = {"analyst": analyst, "video_id": video_id, "published_at": published_at, "mentions": mentions}
+    if payload.get("title"):
+        record["title"] = str(payload["title"])
+    return record
+
+
+def mention_snapshot(video: dict, mention: dict) -> dict:
+    snap = {"date": video["published_at"], "video_id": video["video_id"], "signal": mention["signal"]}
+    for field in REVISABLE_FIELDS + ("timestamp", "person", "confidence", "quote"):
+        if mention.get(field) is not None:
+            snap[field] = mention[field]
+    url = timestamp_url(video["video_id"], mention.get("timestamp"))
+    if url:
+        snap["timestamp_url"] = url
+    return snap
+
+
+def build_history(videos: list, abandon_after: int, today: str) -> dict:
+    """Reconstruye las senales de cada analista recorriendo sus videos por fecha de publicacion."""
+    threads, events, neutral = [], [], []
+    by_analyst = {}
+    for video in videos:
+        by_analyst.setdefault(analyst_key(video["analyst"]), []).append(video)
+
+    for vids in by_analyst.values():
+        vids.sort(key=lambda v: (v["published_at"], v.get("recorded_at", ""), v["video_id"]))
+        open_threads, last_neutral = {}, {}
+
+        def event(video, ticker, kind, **extra):
+            events.append({"video_id": video["video_id"], "ticker": ticker, "event": kind, **extra})
+
+        def close(thread, reason, date, video=None, mention=None):
+            thread["status"] = "CLOSED"
+            thread["closed"] = {"reason": reason, "date": date}
+            if video is not None:
+                thread["closed"].update(mention_snapshot(video, mention) if mention else {"video_id": video["video_id"]})
+                thread["closed"]["date"] = date
+            del open_threads[thread["ticker"]]
+
+        def open_thread(video, mention):
+            thread = {
+                "id": f"{mention['ticker']}@{video['video_id']}",
+                "analyst": video["analyst"],
+                "ticker": mention["ticker"],
+                "asset_name": mention.get("asset_name"),
+                "benchmark": mention["benchmark"],
+                "side": mention["signal"],
+                "status": "OPEN",
+                "opened": mention_snapshot(video, mention),
+                "current": {f: mention.get(f) for f in REVISABLE_FIELDS},
+                "mentions": 1,
+                "last_mentioned": video["published_at"],
+                "revisions": [],
+                "closed": None,
+                "_set_on": {f: video["published_at"] for f in REVISABLE_FIELDS},
+                "_missed": 0,
+            }
+            open_threads[mention["ticker"]] = thread
+            threads.append(thread)
+            last_neutral.pop(mention["ticker"], None)
+            return thread
+
+        for video in vids:
+            date = video["published_at"]
+            for thread in list(open_threads.values()):
+                expiry = thread["current"]["expiry_date"]
+                if expiry and expiry < date:
+                    close(thread, "EXPIRED", expiry)
+                    event(video, thread["ticker"], "EXPIRED", signal_id=thread["id"], expiry_date=expiry)
+
+            mentioned = set()
+            for mention in video["mentions"]:
+                ticker, signal = mention["ticker"], mention["signal"]
+                mentioned.add(ticker)
+                thread = open_threads.get(ticker)
+                if thread is None:
+                    if signal in ("BUY", "SELL"):
+                        new = open_thread(video, mention)
+                        event(video, ticker, "NEW", signal_id=new["id"], side=signal)
+                    elif signal == "HOLD":
+                        last_neutral[ticker] = {"analyst": video["analyst"], "ticker": ticker, **mention_snapshot(video, mention)}
+                        event(video, ticker, "NEUTRAL", note="MANTENER/NEUTRO sin senal abierta: se guarda pero no puntua")
+                    else:
+                        event(video, ticker, "IGNORED", note="CLOSE sin senal abierta de ese valor")
+                    continue
+
+                thread["_missed"] = 0
+                if signal == "CLOSE":
+                    close(thread, "CLOSED_BY_ANALYST", date, video, mention)
+                    event(video, ticker, "CLOSED", signal_id=thread["id"])
+                elif signal in ("BUY", "SELL") and signal != thread["side"]:
+                    close(thread, "REVERSED", date, video, mention)
+                    new = open_thread(video, mention)
+                    event(video, ticker, "REVERSED", closed_signal_id=thread["id"], signal_id=new["id"], side=signal)
+                else:
+                    # Misma direccion o MANTENER: sigue la misma senal; solo cuentan los niveles que cambian.
+                    thread["mentions"] += 1
+                    thread["last_mentioned"] = date
+                    thread["asset_name"] = thread["asset_name"] or mention.get("asset_name")
+                    changes = []
+                    for field in REVISABLE_FIELDS:
+                        new_value, old_value = mention.get(field), thread["current"][field]
+                        if new_value is None or new_value == old_value:
+                            continue
+                        changes.append(
+                            {
+                                "field": field,
+                                "from": old_value,
+                                "to": new_value,
+                                "kind": "set" if old_value is None else "moved",
+                                "previous_set_on": thread["_set_on"][field],
+                                "date": date,
+                                "video_id": video["video_id"],
+                                "timestamp": mention.get("timestamp"),
+                                "timestamp_url": timestamp_url(video["video_id"], mention.get("timestamp")),
+                            }
+                        )
+                        thread["current"][field] = new_value
+                        thread["_set_on"][field] = date
+                    thread["revisions"].extend(changes)
+                    event(
+                        video, ticker, "REVISED" if changes else "CONFIRMED", signal_id=thread["id"], signal=signal,
+                        changes=[{k: c[k] for k in ("field", "from", "to")} for c in changes],
+                    )
+
+            for thread in list(open_threads.values()):
+                if thread["ticker"] in mentioned:
+                    continue
+                thread["_missed"] += 1
+                if abandon_after and thread["_missed"] >= abandon_after:
+                    close(thread, "ABANDONED", date)
+                    event(video, thread["ticker"], "ABANDONED", signal_id=thread["id"], videos_without_mention=thread["_missed"])
+
+        for thread in list(open_threads.values()):
+            expiry = thread["current"]["expiry_date"]
+            if expiry and expiry < today:
+                close(thread, "EXPIRED", expiry)
+        neutral.extend(last_neutral.values())
+
+    for thread in threads:
+        thread.pop("_set_on")
+        thread.pop("_missed")
+    threads.sort(key=lambda t: (t["opened"]["date"], t["analyst"], t["ticker"]))
+    return {"threads": threads, "events": events, "neutral": neutral}
+
+
+def summarize_analysts(videos: list) -> list:
+    summary = {}
+    for video in videos:
+        s = summary.setdefault(analyst_key(video["analyst"]), {"analyst": video["analyst"], "videos_recorded": 0, "dates": []})
+        s["videos_recorded"] += 1
+        s["dates"].append(video["published_at"])
+    return [
+        {"analyst": s["analyst"], "videos_recorded": s["videos_recorded"], "first_video": min(s["dates"]), "last_video": max(s["dates"])}
+        for s in summary.values()
+    ]
+
+
+def filter_videos(data: dict, analyst) -> list:
+    if not analyst:
+        return data["videos"]
+    key = analyst_key(analyst)
+    return [v for v in data["videos"] if analyst_key(v["analyst"]) == key]
+
+
+def cmd_signals(args):
+    data = load_store(SIGNALS_PATH, {"version": 1, "videos": []})
+    data.setdefault("videos", [])
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    if args.action == "record":
+        if not args.input:
+            fail("--input es obligatorio para --action record (ruta a un JSON o - para stdin)")
+        warnings_out = []
+        record = parse_video_record(read_json_input(args.input), warnings_out)
+        key = analyst_key(record["analyst"])
+        same_analyst = [v for v in data["videos"] if analyst_key(v["analyst"]) == key]
+        if same_analyst:
+            record["analyst"] = same_analyst[0]["analyst"]  # mismo nombre visible para todo el historial
+        existing = next((v for v in same_analyst if v["video_id"] == record["video_id"]), None)
+        if existing is not None and {k: v for k, v in existing.items() if k != "recorded_at"} == record:
+            result = "unchanged"
+        else:
+            # Al reprocesar se conserva recorded_at para no alterar el orden de videos del mismo dia.
+            record["recorded_at"] = existing["recorded_at"] if existing else datetime.now().isoformat(timespec="seconds")
+            if existing is not None:
+                data["videos"][data["videos"].index(existing)] = record
+            else:
+                data["videos"].append(record)
+            save_store(SIGNALS_PATH, data)
+            result = "replaced" if existing else "created"
+
+        history = build_history(filter_videos(data, record["analyst"]), args.abandon_after, today)
+        emit(
+            {
+                "status": "ok",
+                "result": result,
+                "signals_file": str(SIGNALS_PATH),
+                "analyst": record["analyst"],
+                "video_id": record["video_id"],
+                "published_at": record["published_at"],
+                "warnings": warnings_out,
+                "events": [e for e in history["events"] if e["video_id"] == record["video_id"]],
+                "open_signals": sum(1 for t in history["threads"] if t["status"] == "OPEN"),
+            }
+        )
+        return
+
+    if args.action == "delete":
+        if not args.analyst or not args.video_id:
+            fail("--analyst y --video-id son obligatorios para --action delete")
+        key, video_id = analyst_key(args.analyst), extract_video_id(args.video_id)
+        before = len(data["videos"])
+        data["videos"] = [v for v in data["videos"] if not (analyst_key(v["analyst"]) == key and v["video_id"] == video_id)]
+        removed = before - len(data["videos"])
+        if removed:
+            save_store(SIGNALS_PATH, data)
+        emit({"status": "ok", "result": "removed" if removed else "not_found", "video_id": video_id, "videos_removed": removed})
+        return
+
+    # list
+    videos = filter_videos(data, args.analyst)
+    history = build_history(videos, args.abandon_after, today)
+    threads, neutral = history["threads"], history["neutral"]
+    if args.ticker:
+        ticker = normalize_ticker(args.ticker, [])
+        threads = [t for t in threads if t["ticker"] == ticker]
+        neutral = [n for n in neutral if n["ticker"] == ticker]
+    if args.status != "all":
+        threads = [t for t in threads if t["status"] == args.status.upper()]
+    emit(
+        {
+            "status": "ok",
+            "signals_file": str(SIGNALS_PATH),
+            "abandon_after": args.abandon_after,
+            "analysts": summarize_analysts(videos),
+            "count": len(threads),
+            "signals": threads,
+            "neutral": neutral,
+        }
+    )
+
+
+# --------------------------------------------------------------------------- scorecard
+
+def wilson_interval(hits: int, n: int, z: float = 1.96):
+    """Intervalo de confianza del 95 % de una proporcion; con pocas senales sale muy ancho."""
+    if n == 0:
+        return None
+    p = hits / n
+    denom = 1 + z * z / n
+    centre = p + z * z / (2 * n)
+    margin = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return [round(max(0.0, (centre - margin) / denom) * 100, 1), round(min(1.0, (centre + margin) / denom) * 100, 1)]
+
+
+def as_date(value: str) -> datetime:
+    return datetime.strptime(value, "%Y-%m-%d")
+
+
+def breach_date(yf, ticker: str, side: str, field: str, level: float, set_on: str, moved_on: str):
+    """Fecha en que el precio rompio un nivel antes de que el analista lo moviera (o None).
+
+    Stop: basta con tocarlo intradia (ahi salta la orden). Entrada: un soporte (compra) o una
+    resistencia (venta) falla si el cierre lo pierde; un nivel de ruptura no se puede fallar asi.
+    """
+    start, end = as_date(set_on), as_date(moved_on) - timedelta(days=1)
+    if end < start:
+        return None
+    hist, _ = load_history(yf, ticker, start, end + timedelta(days=1))
+    if hist is None:
+        return None
+    buy = side == "BUY"
+    if field == "stop_loss":
+        return first_touch(hist, "Low" if buy else "High", level, above=not buy)
+    reference = float(hist["Close"].iloc[0])
+    if (buy and level >= reference) or (not buy and level <= reference):
+        return None
+    return first_touch(hist, "Close", level, above=not buy)
+
+
+def evaluate_thread(yf, thread: dict, today: datetime) -> dict:
+    opened, closed = thread["opened"], thread["closed"]
+    start = as_date(opened["date"])
+    end = max(start, as_date(closed["date"]) if closed else today)
+    side = thread["side"]
+    row = {
+        "id": thread["id"], "ticker": thread["ticker"], "side": side, "status": thread["status"],
+        "opened_on": opened["date"], "closed_on": closed["date"] if closed else None,
+        "close_reason": closed["reason"] if closed else None,
+    }
+
+    data = measure(yf, thread["ticker"], start, end)
+    if data is None:
+        return {**row, "outcome": "NOT_EVALUATED", "reason": "Sin datos en Yahoo Finance (revisa el ticker)"}
+    if data["signal_date_used"] > data["eval_date_used"]:
+        if closed:
+            return {**row, "outcome": "NOT_EVALUATED", "reason": "La senal se cerro sin ninguna sesion de bolsa por medio"}
+        return {**row, "outcome": "PROVISIONAL", "reason": "Aun no hay sesiones de bolsa desde la senal"}
+
+    # Una entrada lejos del precio ("compro si cae a 10,85", "si supera 13") es una orden condicionada:
+    # la senal no empieza hasta que el precio la toca y, si nunca la toca, no es ni acierto ni fallo.
+    price, buy = data["price_at_signal"], side == "BUY"
+    entry = opened.get("entry_level")
+    if entry is not None and abs(entry - price) / price * 100 > ENTRY_TOLERANCE_PCT:
+        hist, _ = load_history(yf, thread["ticker"], start, end + timedelta(days=1))
+        triggered = first_touch(hist, "High" if entry > price else "Low", entry, above=entry > price) if hist is not None else None
+        row.update({"entry_level": entry, "entry_triggered_on": triggered})
+        if triggered is None:
+            if closed:
+                return {**row, "outcome": "NOT_TRIGGERED", "reason": "El precio no llego a la entrada antes de cerrarse la senal"}
+            return {**row, "outcome": "PROVISIONAL", "reason": "Pendiente: el precio aun no ha llegado a la entrada"}
+        start = as_date(triggered)
+        data = measure(yf, thread["ticker"], start, end) or data
+        price = entry
+
+    # Un stop por encima de la entrada en una compra (o un objetivo por debajo) daria un "acierto" o "fallo"
+    # instantaneo: suele ser una cifra mal transcrita o de otro instrumento. Se descarta y se avisa.
+    stop, target, level_warnings = opened.get("stop_loss"), opened.get("target_price"), []
+    if stop is not None and (stop >= price if buy else stop <= price):
+        level_warnings.append(f"stop_loss {stop} incoherente con el precio {price} en la senal {side}; ignorado")
+        stop = None
+    if target is not None and (target <= price if buy else target >= price):
+        level_warnings.append(f"target_price {target} incoherente con el precio {price} en la senal {side}; ignorado")
+        target = None
+    if stop is not None or target is not None:
+        data = measure(yf, thread["ticker"], start, end, side=side, stop=stop, target=target) or data
+    if level_warnings:
+        row["level_warnings"] = level_warnings
+
+    first_event = data.get("first_event")
+    if first_event == "target":
+        outcome, decided_by = "HIT", "target"
+    elif first_event == "stop":
+        outcome, decided_by = "MISS", "stop"
+    elif first_event == "ambiguous_same_day":
+        outcome, decided_by = "NOT_EVALUATED", "ambiguous_same_day"
+    elif closed:
+        won = data["return_pct"] > 0 if side == "BUY" else data["return_pct"] < 0
+        outcome, decided_by = ("HIT" if won else "MISS"), "return"
+    else:
+        outcome, decided_by = "PROVISIONAL", None
+
+    bench = measure(yf, thread["benchmark"], start, end) if thread["benchmark"] else None
+    signal_alpha = None
+    if bench is not None:
+        # Alpha en la direccion de la senal: en una venta, quedarse por debajo del indice es acertar.
+        signal_alpha = round((data["return_pct"] - bench["return_pct"]) * (1 if side == "BUY" else -1), 2)
+
+    revisions = []
+    for rev in thread["revisions"]:
+        item = {k: rev[k] for k in ("field", "from", "to", "kind", "date", "timestamp_url")}
+        if rev["kind"] == "moved" and rev["field"] in ("stop_loss", "entry_level"):
+            item["after_breach"] = breach_date(yf, thread["ticker"], side, rev["field"], rev["from"], rev["previous_set_on"], rev["date"])
+        revisions.append(item)
+
+    return {
+        **row,
+        "outcome": outcome,
+        "decided_by": decided_by,
+        "eval_date_used": data["eval_date_used"],
+        "price_at_signal": data["price_at_signal"],
+        "eval_price": data["eval_price"],
+        "currency": data.get("currency"),
+        "first_event": first_event,
+        "return_pct": data["return_pct"],
+        "benchmark": thread["benchmark"],
+        "benchmark_return_pct": bench["return_pct"] if bench else None,
+        "signal_alpha_pct": signal_alpha,
+        "revisions": revisions,
+    }
+
+
+def side_stats(rows: list) -> dict:
+    decided = [r for r in rows if r["outcome"] in ("HIT", "MISS")]
+    hits = sum(1 for r in decided if r["outcome"] == "HIT")
+    alphas = [r["signal_alpha_pct"] for r in decided if r.get("signal_alpha_pct") is not None]
+    return {
+        "evaluated": len(decided),
+        "hits": hits,
+        "hit_rate_pct": round(hits / len(decided) * 100, 1) if decided else None,
+        "hit_rate_ci95_pct": wilson_interval(hits, len(decided)),
+        "avg_signal_alpha_pct": round(sum(alphas) / len(alphas), 2) if alphas else None,
+        "alpha_sample": len(alphas),
+    }
+
+
+def build_scorecard(analyst: dict, threads: list, rows: list) -> dict:
+    overall = side_stats(rows)
+    # Los cambios salen del historial (no dependen de Yahoo); la ruptura previa, de la evaluacion.
+    moved = [(t, r) for t in threads for r in t["revisions"] if r["kind"] == "moved"]
+    level_moves = [(t, r) for t, r in moved if r["field"] in LEVEL_FIELDS]
+    breached = sum(1 for row in rows for r in row.get("revisions", []) if r.get("after_breach"))
+    closures = {reason: sum(1 for t in threads if t["closed"] and t["closed"]["reason"] == reason) for reason in CLOSE_REASONS}
+    n = overall["evaluated"]
+    return {
+        **analyst,
+        "signals_total": len(threads),
+        "open": sum(1 for t in threads if t["status"] == "OPEN"),
+        **overall,
+        "by_side": {side: side_stats([r for r in rows if r["side"] == side]) for side in ("BUY", "SELL")},
+        "provisional": sum(1 for r in rows if r["outcome"] == "PROVISIONAL"),
+        "not_evaluated": sum(1 for r in rows if r["outcome"] == "NOT_EVALUATED"),
+        "not_triggered": sum(1 for r in rows if r["outcome"] == "NOT_TRIGGERED"),
+        "level_moves": {
+            "total": len(level_moves),
+            "signals_with_moves": len({t["id"] for t, _ in level_moves}),
+            "stop_loosened": sum(
+                1 for t, r in level_moves
+                if r["field"] == "stop_loss" and ((r["to"] < r["from"]) if t["side"] == "BUY" else (r["to"] > r["from"]))
+            ),
+            "moved_after_breach": breached,
+            "expiry_changes": sum(1 for _, r in moved if r["field"] == "expiry_date"),
+        },
+        "closures": closures,
+        "abandoned_without_close": closures["ABANDONED"],
+        # Respuestas sueltas (p. ej. a oyentes) que no se vuelven a mencionar: no son lo mismo que
+        # dejar caer una senal que se venia siguiendo.
+        "abandoned_after_single_mention": sum(
+            1 for t in threads if t["closed"] and t["closed"]["reason"] == "ABANDONED" and t["mentions"] == 1
+        ),
+        "sample_warning": (
+            f"Solo {n} senales evaluadas (minimo orientativo: {MIN_SAMPLE}). La muestra no es significativa: "
+            "la tasa de acierto puede deberse al azar."
+            if n < MIN_SAMPLE else None
+        ),
+    }
+
+
+def cmd_scorecard(args):
+    try:
+        import yfinance as yf
+    except ImportError:
+        fail("Falta yfinance. Ejecuta con `uv run` o instala: pip install yfinance", code=EXIT_DEPENDENCY)
+    warnings.simplefilter("ignore")
+    logging.getLogger("yfinance").setLevel(logging.CRITICAL)
+
+    since = check_date(args.since, "--since") if args.since else None
+    data = load_store(SIGNALS_PATH, {"version": 1, "videos": []})
+    videos = filter_videos(data, args.analyst)
+    today_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    history = build_history(videos, args.abandon_after, today_dt.strftime("%Y-%m-%d"))
+    threads = [t for t in history["threads"] if not since or t["opened"]["date"] >= since]
+    if not threads:
+        emit(
+            {
+                "status": "ok",
+                "signals_file": str(SIGNALS_PATH),
+                "scorecards": [],
+                "message": "No hay senales registradas para ese filtro. Registra videos con `signals --action record`.",
+            }
+        )
+        return
+
+    # Una descarga por ticker para todo el periodo; measure() recorta despues cada ventana.
+    earliest = {}
+    for t in threads:
+        for ticker in filter(None, (t["ticker"], t["benchmark"])):
+            earliest[ticker] = min(earliest.get(ticker, t["opened"]["date"]), t["opened"]["date"])
+    try:
+        for ticker, first in earliest.items():
+            load_history(yf, ticker, as_date(first) - timedelta(days=5), today_dt + timedelta(days=2))
+        rows = [evaluate_thread(yf, t, today_dt) for t in threads]
+    except Exception as exc:
+        fail(f"Error consultando Yahoo Finance: {type(exc).__name__}: {exc}", code=EXIT_REMOTE)
+
+    scorecards = []
+    for analyst in summarize_analysts(videos):
+        key = analyst_key(analyst["analyst"])
+        pairs = [(t, r) for t, r in zip(threads, rows) if analyst_key(t["analyst"]) == key]
+        if not pairs:
+            continue
+        card = build_scorecard(analyst, [t for t, _ in pairs], [r for _, r in pairs])
+        if args.detail:
+            card["signals"] = [r for _, r in pairs]
+        scorecards.append(card)
+
+    emit(
+        {
+            "status": "ok",
+            "signals_file": str(SIGNALS_PATH),
+            "since": since,
+            "eval_date": today_dt.strftime("%Y-%m-%d"),
+            "abandon_after": args.abandon_after,
+            "scorecards": scorecards,
+            "note": (
+                "Informacion sobre senales pasadas, no una recomendacion de seguir a ningun analista. "
+                "Cada senal se audita desde su primera aparicion y con sus niveles originales. Si la entrada estaba a mas de "
+                f"un {ENTRY_TOLERANCE_PCT:g} % del precio, la senal empieza el dia en que el precio la toca (cierre de ese dia) y, "
+                "si no la toca, queda NOT_TRIGGERED y no cuenta. Si el precio toca antes el "
+                "objetivo es acierto, si toca antes el stop es fallo; sin niveles decide el signo de return_pct al cierre "
+                "(una caida es acierto en VENDER). Las senales abiertas sin stop ni objetivo tocados son provisionales y "
+                "no cuentan. signal_alpha_pct es la rentabilidad frente al indice en la direccion de la senal."
+            ),
+        }
+    )
+
+
 # --------------------------------------------------------------------------- main
 
 def main():
     parser = argparse.ArgumentParser(
-        description="FinTube Analyst Auditor CLI: RSS y subtitulos de YouTube, precios de Yahoo Finance y cartera local. Salida JSON por stdout.",
+        description="FinTube Analyst Auditor CLI: RSS y subtitulos de YouTube, precios de Yahoo Finance, cartera local e historial de senales. Salida JSON por stdout.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Ejemplos:
   fintube_cli.py resolve-channel --channel @especulacionenbolsa
@@ -538,6 +1181,9 @@ def main():
   fintube_cli.py audit --tickers SAN.MC --signal-date 2026-10-09 --side BUY --stop 9.80 --target-price 11.50
   fintube_cli.py portfolio --action add --ticker SAN.MC --shares 500 --buy-price 10.45 --buy-date 2026-10-10
   fintube_cli.py portfolio --action list
+  fintube_cli.py signals --action record --input video.json
+  fintube_cli.py signals --action list --analyst "Especulacion en Bolsa" --ticker SAN.MC
+  fintube_cli.py scorecard --analyst "Especulacion en Bolsa" --detail
 
 Codigos de salida: 0 ok, 2 entrada invalida, 3 error remoto (YouTube/Yahoo), 4 falta dependencia.""",
     )
@@ -584,13 +1230,34 @@ Codigos de salida: 0 ok, 2 entrada invalida, 3 error remoto (YouTube/Yahoo), 4 f
     p_port.add_argument("--channel-id", default=None, help="Para --action follow")
     p_port.add_argument("--keyword", default=None, help="Para --action follow")
 
+    abandon_help = f"Videos seguidos sin mencionar un valor para dar su senal por abandonada (0 = nunca; por defecto {DEFAULT_ABANDON_AFTER})"
+
+    p_sig = sub.add_parser("signals", help=f"Historial de senales por analista en {SIGNALS_PATH}")
+    p_sig.add_argument("--action", choices=["record", "list", "delete"], required=True)
+    p_sig.add_argument("--input", default=None, help="Para record: JSON del video con sus senales (ruta o - para stdin)")
+    p_sig.add_argument("--analyst", default=None, help="Filtra por analista (sin distinguir mayusculas ni tildes)")
+    p_sig.add_argument("--ticker", default=None, help="Para list: filtra por ticker")
+    p_sig.add_argument("--status", choices=["open", "closed", "all"], default="all", help="Para list")
+    p_sig.add_argument("--video-id", default=None, help="Para delete: URL o video_id")
+    p_sig.add_argument("--abandon-after", type=int, default=DEFAULT_ABANDON_AFTER, help=abandon_help)
+
+    p_sc = sub.add_parser("scorecard", help="Tabla de aciertos por analista a partir del historial de senales")
+    p_sc.add_argument("--analyst", default=None, help="Solo este analista (por defecto, todos)")
+    p_sc.add_argument("--since", default=None, help="Solo senales abiertas desde YYYY-MM-DD")
+    p_sc.add_argument("--abandon-after", type=int, default=DEFAULT_ABANDON_AFTER, help=abandon_help)
+    p_sc.add_argument("--detail", action="store_true", help="Incluye la evaluacion de cada senal")
+
     args = parser.parse_args()
+    if getattr(args, "abandon_after", 0) < 0:
+        fail("--abandon-after no puede ser negativo")
     handlers = {
         "resolve-channel": cmd_resolve_channel,
         "scan-rss": cmd_scan_rss,
         "transcript": cmd_transcript,
         "audit": cmd_audit,
         "portfolio": cmd_portfolio,
+        "signals": cmd_signals,
+        "scorecard": cmd_scorecard,
     }
     handlers[args.command](args)
 

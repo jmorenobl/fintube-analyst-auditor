@@ -8,7 +8,7 @@
 
 <br>
 
-[![Versión](https://img.shields.io/badge/versión-0.2.0-34d399?style=for-the-badge)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/versión-0.3.0-34d399?style=for-the-badge)](CHANGELOG.md)
 [![Licencia EUPL 1.2](https://img.shields.io/badge/licencia-EUPL_1.2-0f2e2a?style=for-the-badge)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/estándar-Agent_Skills-0b1626?style=for-the-badge)](https://agentskills.io)
 [![Gratis](https://img.shields.io/badge/sin_API_de_pago-gratis-fbbf24?style=for-the-badge)](#-requisitos)
@@ -66,6 +66,8 @@ Compara cada recomendación con precios reales de Yahoo Finance y con el IBEX 35
 </tr>
 </table>
 
+Además **guarda un historial de cada señal**: sabe cuándo apareció por primera vez, te enseña cada vez que el analista movió un soporte o un stop y calcula su tabla de aciertos frente al IBEX 35.
+
 Y si le cuentas qué acciones tienes, **te avisa cuando un analista cambia de opinión sobre ellas.**
 
 <br>
@@ -79,6 +81,8 @@ Y si le cuentas qué acciones tienes, **te avisa cuando un analista cambia de op
 > 🗣️ *"En septiembre dijeron que vendiera Santander. ¿Acertaron?"*
 >
 > 🗣️ *"Tengo 500 acciones de Repsol. ¿Algún analista ha cambiado de opinión?"*
+>
+> 🗣️ *"¿Han movido el soporte de Santander? ¿Qué tasa de acierto tiene Especulación en Bolsa?"*
 
 **Así responde:**
 
@@ -237,7 +241,13 @@ Los subtítulos automáticos de YouTube se equivocan con nombres y cifras. La sk
 <details>
 <summary><b>🔒 ¿Dónde se guarda mi cartera?</b></summary>
 <br>
-Solo en tu ordenador, en <code>~/.fintube/portfolio.json</code>. No se envía a ningún sitio. En las apps de chat en la nube puede perderse al cerrar la conversación.
+Solo en tu ordenador, en <code>~/.fintube/portfolio.json</code> (y el historial de señales en <code>~/.fintube/signals.json</code>). No se envía a ningún sitio. En las apps de chat en la nube puede perderse al cerrar la conversación.
+</details>
+
+<details>
+<summary><b>📈 ¿Me puedo fiar de la tabla de aciertos?</b></summary>
+<br>
+Solo cuenta los vídeos que tu asistente ha registrado: el historial empieza el día que empiezas a usarlo (con los ~15 últimos vídeos del canal). Con menos de 20 señales evaluadas el resultado puede deberse al azar, y la skill te lo dirá. Es información sobre lo que pasó, no una recomendación para seguir a nadie.
 </details>
 
 <details>
@@ -263,7 +273,7 @@ Muchos analistas no publican en su propio canal: el canal personal de Alberto It
 │   └── workflows/              # CI (validación) y release (genera el ZIP)
 └── skills/fintube-analyst-auditor/
     ├── SKILL.md                # Instrucciones para el agente
-    ├── scripts/fintube_cli.py  # CLI: resolve-channel, scan-rss, transcript, audit, portfolio
+    ├── scripts/fintube_cli.py  # CLI: resolve-channel, scan-rss, transcript, audit, portfolio, signals, scorecard
     ├── references/             # Esquema de señales, tickers y analistas conocidos
     └── evals/evals.json        # Casos de prueba (formato agentskills.io)
 ```

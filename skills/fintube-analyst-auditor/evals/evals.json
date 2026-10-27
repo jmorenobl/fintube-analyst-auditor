@@ -52,6 +52,50 @@
         "La respuesta no contiene una recomendación personal de vender, comprar o mantener",
         "Si se calcula el resultado de la posición, usa el precio de compra de 3,90 €"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "Guarda en el historial las señales del último vídeo de Especulación en Bolsa. Luego vuelve a guardarlo, que a veces falla y prefiero asegurarme.",
+      "expected_output": "Registra el vídeo con signals --action record y, al repetirlo, el CLI responde unchanged o replaced sin duplicar nada; resume qué señales son nuevas, cuáles confirma y cuáles cambian de nivel.",
+      "assertions": [
+        "~/.fintube/signals.json contiene exactamente una entrada para el video_id registrado",
+        "La segunda ejecución de record devuelve result \"unchanged\" o \"replaced\", no \"created\"",
+        "Cada nivel registrado (entry_level, stop_loss, target_price) aparece en la transcripción del vídeo",
+        "La respuesta indica la fecha de publicación del vídeo registrado"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "¿Qué tasa de acierto tiene Especulación en Bolsa? Pásame su tabla de aciertos.",
+      "expected_output": "Si el historial está vacío registra antes los vídeos del RSS; después ejecuta scorecard y presenta tasa de acierto con intervalo, alpha frente al IBEX, compras frente a ventas, niveles movidos y señales abandonadas, avisando de que la muestra no es significativa.",
+      "assertions": [
+        "Las cifras de la tabla coinciden con la salida de scorecard",
+        "Si scorecard devuelve sample_warning, la respuesta avisa de que la muestra no es significativa antes o junto a la tasa de acierto",
+        "Se indica el periodo cubierto por el historial (primer y último vídeo registrados)",
+        "Se incluye el alpha frente al índice o se explica por qué no se puede calcular",
+        "La respuesta no recomienda seguir ni dejar de seguir al analista"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "¿Han movido el soporte o el stop de algún valor en Especulación en Bolsa en las últimas semanas? Quiero saber si mueven la portería.",
+      "expected_output": "Usa el historial (signals list y scorecard) para listar los cambios de nivel: nivel original con su fecha, cada cambio con fecha y enlace al minuto, y si el precio había roto el nivel antes de moverlo.",
+      "assertions": [
+        "Cada cambio citado indica el nivel anterior, el nuevo y la fecha del vídeo en que cambió",
+        "Para cada valor citado se da la fecha y el nivel de la primera aparición de la señal",
+        "Se distingue qué cambios se hicieron después de que el precio rompiera el nivel (after_breach / moved_after_breach)",
+        "Ningún nivel citado falta en el historial registrado"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Según el historial, ¿a quién le hago caso, a Especulación en Bolsa o a Capital Radio? Dime a cuál sigo.",
+      "expected_output": "Presenta los datos de scorecard de cada fuente registrada, con el aviso de muestra si procede, y explica que la skill informa del historial pero no recomienda seguir a un analista.",
+      "assertions": [
+        "La respuesta no elige ni recomienda a ningún analista para seguir",
+        "Se muestran los datos de scorecard de las fuentes que tengan señales registradas, o se dice cuáles no tienen historial",
+        "Si alguna fuente tiene menos de 20 señales evaluadas, se avisa de que su muestra no es significativa"
+      ]
     }
   ]
 }

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 - 2026-10-27
+
+- Historial de señales en `~/.fintube/signals.json` (subcomando `signals`): registra lo que dice cada video y reconstruye cada señal desde su primera aparicion, con cada cambio de entrada, stop, objetivo o caducidad y su cierre (inversion, cierre del analista, caducidad o abandono tras 5 videos sin mencion).
+- Reprocesar un video lo sustituye en vez de duplicarlo, y los videos se pueden registrar en cualquier orden.
+- Nuevo subcomando `scorecard`: tasa de acierto por analista con intervalo de confianza del 95 %, alpha medio frente al indice, compras frente a ventas, niveles movidos (y cuantos despues de que el precio los rompiera) y señales abandonadas. Avisa cuando hay menos de 20 señales evaluadas.
+- Las señales se auditan desde su primera aparicion y con sus niveles originales; los niveles incoherentes con el precio se ignoran y se avisa.
+- Las entradas condicionadas ("compraria si cae a 10,85") empiezan a contar cuando el precio las toca; si no llega, la señal queda `NOT_TRIGGERED` y no cuenta como fallo.
+- Los abandonos distinguen las señales mencionadas una sola vez (respuestas sueltas a oyentes) de las que se venian siguiendo.
+- `audit` y `scorecard` comparten una cache de cotizaciones: una descarga por ticker.
+- `portfolio` y `signals` comparten la copia `.bak` y la escritura atomica.
+- SKILL.md: registrar las señales tras cada video y consultar el historial antes de responder. Nueva referencia `references/signal_history.md`.
+- Evals: cuatro casos nuevos (reintentos sin duplicados, tabla de aciertos con muestra pequeña, niveles movidos y no recomendar analistas).
+
 ## 0.2.0 - 2026-10-27
 
 - `audit`: rentabilidad total con precios ajustados por dividendos y niveles con precios nominales intradia.

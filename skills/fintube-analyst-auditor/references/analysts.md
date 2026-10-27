@@ -12,6 +12,7 @@ Comprobados el 2026-10-27. Los horarios los aportan usuarios y pueden cambiar: s
   - La señal vigente de un valor es la del video mas reciente; las anteriores quedan sustituidas, no son señales nuevas.
   - Si el usuario pregunta por cambios, compara el ultimo video con el anterior y destaca solo lo que cambia (p. ej. "el soporte de SAN.MC sube de 7,80 a 8,10").
   - Al auditar, usa como fecha de señal el primer video en el que aparece cada recomendacion.
+  - Registra cada video con `signals --action record` y `analyst: "Especulacion en Bolsa"` (la persona, en `person`, solo si esta claro). El historial calcula la primera aparicion y cada cambio de nivel; con un video por dia laborable, el abandono por defecto (5 videos sin mencion) equivale a una semana.
   - En las preguntas de oyentes, atribuye la respuesta al analista solo si da una opinion propia.
 
 ## Capital Radio — intervenciones de Alberto Iturralde
@@ -22,6 +23,7 @@ Comprobados el 2026-10-27. Los horarios los aportan usuarios y pueden cambiar: s
   - Viernes 09:30 — Consultorio de Bolsa en *Capital, la Bolsa y la Vida*.
   - Viernes — *Clase Magistral con Alberto Iturralde*, con Laura Blanco: aprendizaje de trading, estrategias y geopolitica. Mas didactico que operativo; extrae señales solo si da niveles concretos.
 - **Filtro:** `--keyword "Iturralde|Clase Magistral|Consultorio" --exclude "#shorts"`.
+- **Historial:** registra con `analyst: "Capital Radio - Alberto Iturralde"` y consulta con `--abandon-after 0`: los valores dependen de las preguntas de los oyentes, asi que no mencionar uno no significa abandonarlo.
 - **Ojo:** el canal sube unos 15 videos al dia, asi que el RSS cubre solo uno o dos dias. Escanea el mismo dia de la emision o pide la URL al usuario.
 
 ## Intereconomia — Miguel Mendez

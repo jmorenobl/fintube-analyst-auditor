@@ -6,13 +6,13 @@ Extrae una señal por activo y video. Campos (usa `null` si el video no lo dice;
 
 ```json
 {
-  "analyst": "Alberto Iturralde",
+  "analyst": "Especulacion en Bolsa",
   "video_id": "abc123XYZ_0",
   "published_at": "2026-10-09",
   "asset_name": "Banco Santander",
   "ticker": "SAN.MC",
   "benchmark": "^IBEX",
-  "signal": "BUY | HOLD | SELL",
+  "signal": "BUY | HOLD | SELL | CLOSE",
   "confidence": "explicit | implicit | ambiguous",
   "entry_level": 10.20,
   "stop_loss": 9.80,
@@ -21,11 +21,14 @@ Extrae una señal por activo y video. Campos (usa `null` si el video no lo dice;
   "expiry_reason": "Salir antes de las elecciones del 29 de noviembre",
   "timestamp": "[00:14:32]",
   "timestamp_url": "https://www.youtube.com/watch?v=abc123XYZ_0&t=872s",
-  "quote": "Cita literal breve que justifica la señal"
+  "quote": "Cita literal breve que justifica la señal",
+  "person": "Alberto Iturralde"
 }
 ```
 
-Correspondencia con el semaforo: `BUY` = 🟢 COMPRAR, `HOLD` = 🟡 MANTENER / NEUTRO, `SELL` = 🔴 VENDER / SALIR / PRECAUCION.
+Correspondencia con el semaforo: `BUY` = 🟢 COMPRAR, `HOLD` = 🟡 MANTENER / NEUTRO, `SELL` = 🔴 VENDER / SALIR / PRECAUCION. `CLOSE` = el analista sale o deja de seguir el valor sin darse la vuelta (solo para el historial; no tiene color).
+
+`analyst` es la fuente (canal o programa) y `person` quien lo dice, si esta claro. Para registrar las señales en el historial, `analyst`, `video_id` y `published_at` van una vez en el objeto del video y no en cada señal: ver `signal_history.md`.
 
 ## 2. Tabla de presentacion al usuario
 

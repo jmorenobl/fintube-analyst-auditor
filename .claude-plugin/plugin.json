@@ -1,6 +1,6 @@
 {
   "name": "fintube-analyst-auditor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Resume videos de bolsa de YouTube en un semaforo de compra/venta y audita si el analista acerto con precios reales de Yahoo Finance",
   "author": {
     "name": "Jorge MB",
