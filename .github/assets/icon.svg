@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1626"/>
+      <stop offset="1" stop-color="#0f2e2a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  <!-- Boton de play -->
+  <circle cx="512" cy="450" r="210" fill="#e2e8f0"/>
+  <path d="M462 350 L627 450 L462 550 Z" fill="#0b1626"/>
+  <!-- Semaforo -->
+  <rect x="272" y="720" width="480" height="120" rx="60" fill="#ffffff" fill-opacity="0.1"/>
+  <circle cx="372" cy="780" r="38" fill="#34d399"/>
+  <circle cx="512" cy="780" r="38" fill="#fbbf24"/>
+  <circle cx="652" cy="780" r="38" fill="#f87171"/>
+</svg>

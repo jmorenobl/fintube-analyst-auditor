@@ -37,12 +37,12 @@
 
   <!-- Boton de play -->
   <g transform="translate(80 92)">
-    <rect width="84" height="60" rx="16" fill="#ef4444"/>
-    <path d="M34 18 L56 30 L34 42 Z" fill="#ffffff"/>
+    <circle cx="30" cy="30" r="30" fill="#e2e8f0"/>
+    <path d="M23 17 L44 30 L23 43 Z" fill="#0b1626"/>
   </g>
 
   <!-- Semaforo -->
-  <g transform="translate(184 102)">
+  <g transform="translate(156 102)">
     <rect width="132" height="40" rx="20" fill="#ffffff" fill-opacity="0.08"/>
     <circle cx="28" cy="20" r="11" fill="#34d399"/>
     <circle cx="66" cy="20" r="11" fill="#fbbf24"/>
