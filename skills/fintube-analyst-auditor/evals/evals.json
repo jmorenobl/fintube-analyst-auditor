@@ -1,0 +1,36 @@
+{
+  "skill_name": "fintube-analyst-auditor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Resúmeme este vídeo de bolsa y dime qué recomienda comprar o vender: https://www.youtube.com/watch?v=hp7sXWXOQ0c",
+      "expected_output": "Tabla semáforo con los activos mencionados, sus tickers de Yahoo Finance y timestamps enlazados, más el reparto grano/paja y el aviso de que no es asesoramiento financiero.",
+      "assertions": [
+        "Se ejecutó el subcomando transcript del CLI en lugar de inventar el contenido",
+        "Cada activo de la tabla tiene un ticker con sufijo de mercado correcto (p. ej. SLR.MC para Solaria)",
+        "Cada señal incluye un timestamp [HH:MM:SS] con enlace &t=",
+        "La respuesta termina con el aviso de que no es asesoramiento financiero"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "que ha dicho ultimamente alberto iturralde?",
+      "expected_output": "El agente resuelve el canal, detecta que el canal propio no publica desde 2021 y lo explica, proponiendo buscar sus intervenciones en canales de terceros en lugar de resumir vídeos antiguos como si fueran recientes.",
+      "assertions": [
+        "Se usó resolve-channel o scan-rss para localizar el canal",
+        "La respuesta indica las fechas de publicación de los vídeos encontrados",
+        "No presenta vídeos de 2021 como opiniones recientes"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "El 15 de septiembre de 2026 un analista dijo que vendieras Santander antes del 15 de octubre. ¿Acertó?",
+      "expected_output": "Auditoría con audit para SAN.MC entre 2026-09-15 y 2026-10-15 frente al ^IBEX, interpretando que en una señal de venta la caída del precio es un acierto.",
+      "assertions": [
+        "Se ejecutó audit con --tickers SAN.MC, --signal-date 2026-09-15 y --target-date 2026-10-15",
+        "La conclusión trata la caída del precio como acierto de la señal VENDER",
+        "Se menciona la rentabilidad del benchmark o el alpha"
+      ]
+    }
+  ]
+}

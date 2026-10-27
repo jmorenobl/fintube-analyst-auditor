@@ -1,0 +1,15 @@
+{
+  "name": "fintube",
+  "description": "Skills para auditar a analistas financieros de YouTube",
+  "owner": {
+    "name": "Jorge MB",
+    "url": "https://github.com/jmorenobl"
+  },
+  "plugins": [
+    {
+      "name": "fintube-analyst-auditor",
+      "source": "./",
+      "description": "Resume videos de bolsa de YouTube en un semaforo de compra/venta y audita si el analista acerto con precios reales de Yahoo Finance"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "fintube-analyst-auditor",
+  "version": "0.1.0",
+  "description": "Resume videos de bolsa de YouTube en un semaforo de compra/venta y audita si el analista acerto con precios reales de Yahoo Finance",
+  "author": {
+    "name": "Jorge MB",
+    "url": "https://github.com/jmorenobl"
+  },
+  "homepage": "https://github.com/jmorenobl/fintube-analyst-auditor",
+  "repository": "https://github.com/jmorenobl/fintube-analyst-auditor",
+  "license": "MIT",
+  "keywords": ["youtube", "bolsa", "inversion", "yahoo-finance", "finanzas", "es"]
+}

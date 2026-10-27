@@ -1,0 +1,26 @@
+name: Release
+
+# Al publicar una etiqueta vX.Y.Z se genera el ZIP que los usuarios suben a Claude.ai o ChatGPT.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Empaquetar la skill
+        run: |
+          mkdir -p dist
+          cd skills
+          zip -r ../dist/fintube-analyst-auditor.zip fintube-analyst-auditor -x "*/evals/*" "*__pycache__*" "*.DS_Store"
+
+      - name: Crear la release con el ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/fintube-analyst-auditor.zip --title "$GITHUB_REF_NAME" --notes-file CHANGELOG.md

@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Validar la skill con skills-ref (agentskills.io)
+        run: uvx --from "git+https://github.com/agentskills/agentskills#subdirectory=skills-ref" skills-ref validate skills/fintube-analyst-auditor
+
+      - name: Validar los JSON del repo
+        run: |
+          for f in .claude-plugin/*.json skills/*/evals/*.json; do
+            python3 -m json.tool "$f" > /dev/null && echo "ok $f"
+          done
+
+      - name: Probar el CLI
+        run: |
+          S=skills/fintube-analyst-auditor/scripts/fintube_cli.py
+          uv run "$S" --help
+          HOME="$RUNNER_TEMP" uv run "$S" portfolio --action list
