@@ -96,6 +96,46 @@
         "Se muestran los datos de scorecard de las fuentes que tengan señales registradas, o se dice cuáles no tienen historial",
         "Si alguna fuente tiene menos de 20 señales evaluadas, se avisa de que su muestra no es significativa"
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "¿Qué tasa de acierto lleva Especulación en Bolsa? Usa solo lo que tengo guardado en el historial, no descargues vídeos nuevos.",
+      "expected_output": "Ejecuta scorecard sobre un historial de solo 2 vídeos (6 señales evaluadas). Antes de dar la tasa avisa de que la muestra no es significativa y da el intervalo de confianza; explica que la mayoría de señales siguen provisionales.",
+      "files": [
+        "evals/files/signals_small.json"
+      ],
+      "assertions": [
+        "El aviso de que la muestra no es significativa aparece antes de la tasa de acierto o en la misma frase",
+        "Se da el intervalo de confianza de la tasa (aprox. 30 % a 90 %) o se dice que es muy ancho",
+        "Se indica cuántas señales hay evaluadas (6) y que la mayoría siguen provisionales o abiertas",
+        "La respuesta no recomienda seguir ni dejar de seguir al analista"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Estoy usando la skill en una app de chat que no puede ejecutar programas ni acceder a internet. ¿Qué ha recomendado Especulación en Bolsa en su último vídeo?",
+      "expected_output": "Dice desde la primera frase que en esta app no puede descargar el vídeo, comprobar precios ni guardar historial; ofrece que el usuario pegue la transcripción o use un asistente en su ordenador, y no da señales, minutos ni niveles inventados.",
+      "files": [],
+      "assertions": [
+        "La primera o segunda frase dice que no puede ejecutar las herramientas o descargar el vídeo en esta app",
+        "Ofrece pegar la transcripción del vídeo desde YouTube como alternativa",
+        "Menciona usar la skill en un asistente que trabaje en el ordenador del usuario",
+        "No da ninguna señal concreta, nivel de precio ni marca de tiempo del vídeo"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "YouTube me bloquea la descarga, así que te pego un trozo de la transcripción del vídeo de Especulación en Bolsa del 26/10 (https://www.youtube.com/watch?v=g60ppt9frmw). Sácame las señales y guárdalas en el historial.",
+      "expected_output": "Extrae las señales del fragmento usando sus minutos (formato del panel de YouTube, p. ej. 12:37) con enlace al segundo, solo con niveles que aparecen en el texto, y registra el vídeo con published_at 2026-10-26 y video_id g60ppt9frmw.",
+      "files": [
+        "evals/files/transcript_pegada_g60ppt9frmw.txt"
+      ],
+      "assertions": [
+        "Cada señal lleva un minuto del fragmento y un enlace con &t= en segundos que corresponde a ese minuto",
+        "Cada nivel de precio citado aparece en el fragmento pegado",
+        "~/.fintube/signals.json contiene el video g60ppt9frmw con published_at 2026-10-26",
+        "La respuesta indica que el análisis cubre solo el fragmento pegado, no el vídeo completo"
+      ]
     }
   ]
 }

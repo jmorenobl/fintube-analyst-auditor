@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1 - 2026-10-27
+
+- SKILL.md: si la app no puede ejecutar el CLI (p. ej. la app de Gemini), el agente lo dice en la primera frase, ofrece pegar la transcripcion o usar un asistente local y no da señales, minutos ni niveles sin transcripcion.
+- Si `transcript` falla (bloqueo de YouTube, directo sin empezar), el agente ofrece pegar la transcripcion del panel de YouTube; sus minutos ("14:32") valen como `timestamp`.
+- No se registra en el historial un video cuya transcripcion no se ha leido: con `"signals": []` daria señales por abandonadas sin motivo.
+- `scorecard`: los niveles movidos el mismo dia en que el precio los rompio salen aparte (`moved_same_day_as_breach` y `after_breach_same_day` en el detalle), sin sumarse a `moved_after_breach`.
+- `scan-rss`: `--limit` pasa a 15 por defecto, lo que trae el RSS (antes devolvia 10 aunque casaran 15).
+- `references/signal_history.md`: cuando un nivel es entrada y stop a la vez, que un acierto por tocar el objetivo puede acabar en perdida y la diferencia entre `open` y `provisional`.
+- README: tabla de compatibilidad por app y seccion "Algo no funciona".
+- Evals: tres casos nuevos (muestra pequeña, app sin programa y transcripcion pegada).
+
 ## 0.3.0 - 2026-10-27
 
 - Historial de señales en `~/.fintube/signals.json` (subcomando `signals`): registra lo que dice cada video y reconstruye cada señal desde su primera aparicion, con cada cambio de entrada, stop, objetivo o caducidad y su cierre (inversion, cierre del analista, caducidad o abandono tras 5 videos sin mencion).

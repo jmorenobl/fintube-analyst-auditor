@@ -34,8 +34,10 @@ Reglas de la entrada (el CLI rechaza con codigo 2 lo que no cumpla):
 - **`analyst`** = la fuente, no la persona: `"Especulacion en Bolsa"` para sus videos aunque hablen Iturralde y Mendez. Si esta claro quien lo dice, ponlo en `person`. No distingue mayusculas ni tildes.
 - **Una señal por valor y video.** Si se repite, deja la conclusion final del video.
 - **`signal`**: `BUY`, `SELL`, `HOLD` o `CLOSE` (el analista dice que sale o deja el valor sin darse la vuelta).
-- **Niveles**: soporte o precio de compra → `entry_level`; nivel cuya perdida invalida la idea ("si pierde X, fuera") → `stop_loss`; objetivo → `target_price`. Numeros con punto decimal o `null`. Nunca inventes un nivel: si la cifra es dudosa, `null` y `confidence: "ambiguous"`.
-- **Registra tambien los videos sin señales** (`"signals": []`): cuentan para detectar abandonos.
+- **Niveles**: soporte o precio de compra → `entry_level`; nivel cuya perdida invalida la idea → `stop_loss`; objetivo → `target_price`. Numeros con punto decimal o `null`. Nunca inventes un nivel: si la cifra es dudosa, `null` y `confidence: "ambiguous"`.
+  - Un mismo nivel puede ser las dos cosas. "Comprable mientras aguante 11,80; si lo pierde, fuera" → `entry_level: 11.80` **y** `stop_loss: 11.80`. "Si pierde 11,50 se acabo, corre a 11" → `stop_loss: 11.50`. Un soporte sin consecuencia ("tiene soporte en 11,80") es solo `entry_level`.
+- **Registra tambien los videos sin señales** (`"signals": []`): cuentan para detectar abandonos. Pero **no registres un video cuya transcripcion no hayas leido** (error de `transcript`, video en directo aun sin subtitulos): con `[]` el historial creeria que no menciono ningun valor y daria señales por abandonadas sin motivo. Registralo cuando tengas la transcripcion.
+- **Transcripcion pegada por el usuario**: valida igual. Los minutos del panel de YouTube ("14:32", "1:02:03") sirven tal cual en `timestamp`. Necesitas el `video_id` y la fecha de publicacion: sacalos de la URL y de `scan-rss`, o preguntalos; sin ellos no registres.
 - `benchmark` es opcional: por defecto `^IBEX` para `.MC`, `^STOXX50E` para Europa, `^GSPC` para EE. UU. y ninguno para indices, materias primas, divisas y cripto.
 
 La respuesta trae `events` con lo que ha supuesto el video para cada valor:
@@ -75,7 +77,8 @@ Como se evalua cada señal (lo hace el CLI con los mismos precios que `audit`):
 - Desde la **primera aparicion** hasta su cierre (inversion, cierre, caducidad o abandono), o hasta hoy si sigue abierta.
 - Con los **niveles originales**: si el precio toca antes el objetivo es acierto; si toca antes el stop, fallo, aunque luego el analista moviera el stop. Sin niveles, decide el signo de la rentabilidad al cierre (en VENDER, una caida es acierto).
 - **Entradas condicionadas**: si la entrada original esta a mas de un 1 % del precio ("compraria si cae a 10,85", "si supera 13"), la señal empieza el dia en que el precio la toca (`entry_triggered_on`) y el stop y el objetivo se comparan con esa entrada. Si se cierra sin tocarla → `NOT_TRIGGERED`: no es acierto ni fallo; dilo asi ("la compra en 10,85 nunca se activo").
-- Abierta y sin stop ni objetivo tocados (o con la entrada aun sin tocar) → `PROVISIONAL`, fuera de la tasa.
+- Abierta y sin stop ni objetivo tocados (o con la entrada aun sin tocar) → `PROVISIONAL`, fuera de la tasa. `open` y `provisional` no son lo mismo: una señal abierta que ya toco su stop o su objetivo esta decidida y cuenta en la tasa.
+- Acierto o fallo se decide por lo que el precio toca **primero**. Si toco el objetivo y despues se dio la vuelta, sigue siendo acierto: dilo ("acierto por tocar el objetivo de 425 $; despues cayo un 15,6 %"), porque quien no vendio en el objetivo perdio dinero.
 - Niveles incoherentes con el precio de ese dia (stop por encima del precio en una compra, etc.) se ignoran y salen en `level_warnings`: suelen ser cifras mal transcritas. Revisa esas señales.
 - `signal_alpha_pct`: rentabilidad frente al indice en la direccion de la señal (en VENDER, quedarse por debajo del indice suma).
 
@@ -89,6 +92,7 @@ Campos clave de cada analista:
 | `level_moves.total` | Veces que movio entrada, stop u objetivo |
 | `level_moves.stop_loosened` | Stops alejados (bajados en compras, subidos en ventas) |
 | `level_moves.moved_after_breach` | Niveles movidos despues de que el precio los rompiera ("mover la porteria") |
+| `level_moves.moved_same_day_as_breach` | Movidos el mismo dia en que el precio los rompio. No se suman a lo anterior: el video pudo salir antes o despues de la ruptura. En el detalle, `after_breach_same_day` |
 | `abandoned_without_close` | Señales que dejo de mencionar sin cerrarlas |
 | `abandoned_after_single_mention` | De ellas, las mencionadas una sola vez (respuestas sueltas a oyentes, valores de paso). Distinguelas de las que siguio varios dias y dejo caer |
 | `sample_warning` | Presente si hay menos de 20 señales evaluadas |

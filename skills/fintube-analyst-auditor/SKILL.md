@@ -5,7 +5,7 @@ license: EUPL-1.2
 compatibility: Requiere Python 3.9+ y acceso a internet (youtube.com y finance.yahoo.com). Recomendado uv. En apps de chat con sandbox (Claude.ai, ChatGPT) hay que permitir el acceso de red a esos dominios.
 metadata:
   author: jmorenobl
-  version: "0.3.0"
+  version: "0.3.1"
   repository: https://github.com/jmorenobl/fintube-analyst-auditor
 ---
 
@@ -21,7 +21,15 @@ Rutas relativas al directorio de esta skill. Todos los subcomandos devuelven JSO
 uv run scripts/fintube_cli.py <subcomando> ...
 ```
 
-`uv run` instala solo las dependencias (metadatos PEP 723 del script). Si `uv` no existe, ejecuta `pip install youtube-transcript-api yfinance` una vez y usa `python3 scripts/fintube_cli.py`. Si tampoco hay Python, explica al usuario en lenguaje sencillo que necesita instalarlo; no intentes analizar el video sin transcripcion.
+`uv run` instala solo las dependencias (metadatos PEP 723 del script). Si `uv` no existe, ejecuta `pip install youtube-transcript-api yfinance` una vez y usa `python3 scripts/fintube_cli.py`. Si tampoco hay Python, explica al usuario en lenguaje sencillo que necesita instalarlo.
+
+### Si no puedes ejecutar el CLI
+
+Algunas apps cargan este texto pero no ejecutan programas ni leen `references/` (p. ej. la app de Gemini). Sin el CLI no tienes los subtitulos con su minuto, ni precios, ni historial, y el usuario no lo sabe: si respondes igual, creera que los minutos y niveles salen del video. Por eso:
+
+1. Dilo en la primera frase: "No puedo ejecutar las herramientas de la skill en esta app, asi que no puedo descargar el video, comprobar precios ni guardar el historial."
+2. Ofrece la alternativa: que pegue la transcripcion (en YouTube, **Mas → Mostrar transcripcion**, copiar y pegar) o que use la skill en un asistente que trabaje en su ordenador (Claude Code, Gemini CLI, Codex...).
+3. Con una transcripcion pegada, sigue el paso 3 con sus minutos. Sin ella, no des señales, minutos ni niveles: ni de memoria, ni por el titulo, ni por un resumen del video.
 
 ## Flujo
 
@@ -45,6 +53,7 @@ Si el usuario da una URL, salta al paso 2. Si pregunta *"¿Que ha dicho hoy Itur
    ```bash
    uv run scripts/fintube_cli.py scan-rss --channel-id UCmU9b04Ym19_OvsSdt7rRYg --keyword "Iturralde|Consultorio" --exclude "#shorts" --since 2026-10-01
    ```
+   Devuelve como mucho `--limit` videos (15 por defecto, lo que trae el RSS); `matched_count` dice cuantos casaron.
 3. Ofrece guardar el canal para la proxima vez: `portfolio --action follow --analyst "Alberto Iturralde" --channel-id UC... --keyword Iturralde`.
 
 ### 2. Transcripcion (`transcript`)
@@ -54,6 +63,8 @@ uv run scripts/fintube_cli.py transcript --video "URL_O_VIDEO_ID"
 ```
 
 Texto en bloques de 30 s con prefijo `[HH:MM:SS]` (`--chunk-seconds` para ajustar, `--languages es,en`).
+
+Si falla (bloqueo de YouTube, directo que aun no ha empezado o sin subtitulos), dilo y ofrece dos salidas: probar mas tarde (o desde otra red) o que el usuario pegue la transcripcion del panel de YouTube. No resumas el video por su titulo ni por lo que sepas del analista.
 
 ### 3. Extraccion semantica (tu trabajo)
 
@@ -67,7 +78,7 @@ Texto en bloques de 30 s con prefijo `[HH:MM:SS]` (`--chunk-seconds` para ajusta
 
 ### 4. Historial de señales (`signals`, `scorecard`)
 
-Tras extraer las señales de cada video, **registralas siempre**, tambien si el video no tiene ninguna (cuenta para detectar abandonos):
+Tras extraer las señales de cada video, **registralas siempre**, tambien si el video no tiene ninguna (cuenta para detectar abandonos). La excepcion: un video cuya transcripcion no has leido. Registrarlo vacio haria creer al historial que el analista dejo de hablar de sus valores; espera a tener la transcripcion.
 
 ```bash
 uv run scripts/fintube_cli.py signals --action record --input /ruta/video.json
@@ -127,7 +138,7 @@ No uses imperativos ni valoraciones sobre lo que el usuario deberia hacer, aunqu
 - **El RSS solo trae los ~15 ultimos videos.** En canales que suben mucho (Capital Radio, ~15 al dia) eso es un solo dia. Para videos mas antiguos pide la URL al usuario.
 - **El historial empieza cuando empiezas a registrar.** Si `signals --action list` no tiene videos de un analista, registra los que devuelva `scan-rss` antes de hablar de "primera señal" o de tasa de acierto, y di desde que fecha cubre el historial.
 - **Los subtitulos suelen ser automaticos** (`is_generated: true`) y deforman nombres y cifras (empresas mal transcritas, "1 75" por "1,75 %"). Deduce la empresa por contexto, marca la señal como `ambiguous` si dudas y no inventes niveles de precio.
-- **YouTube bloquea a veces la descarga de subtitulos** desde IPs de servidores en la nube (error de tipo `RequestBlocked`/`IpBlocked`). Explicalo y sugiere ejecutar la skill en el ordenador del usuario; no resumas el video sin transcripcion.
+- **YouTube bloquea a veces la descarga de subtitulos** desde IPs de servidores en la nube (error de tipo `RequestBlocked`/`IpBlocked`), y tambien desde el ordenador del usuario tras muchas descargas seguidas. Explicalo, sugiere ejecutar la skill en su ordenador, esperar unas horas o pegar la transcripcion; no resumas el video sin ella.
 - **Yahoo usa tickers con sufijo de mercado** (`.MC` Madrid). Sin sufijo, `IAG` es una minera de oro canadiense y `SAN` el ADR en dolares. Si `audit` responde "Sin datos" o la divisa no es EUR, el ticker esta mal, no el analista.
 - **En apps de chat con sandbox** la cartera y el historial de `~/.fintube` pueden borrarse al cerrar la sesion. Avisa al usuario de que solo persisten en agentes locales.
 

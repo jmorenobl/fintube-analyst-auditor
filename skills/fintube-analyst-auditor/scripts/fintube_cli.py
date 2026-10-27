@@ -930,12 +930,13 @@ def as_date(value: str) -> datetime:
 
 
 def breach_date(yf, ticker: str, side: str, field: str, level: float, set_on: str, moved_on: str):
-    """Fecha en que el precio rompio un nivel antes de que el analista lo moviera (o None).
+    """Primera fecha, entre que se fijo el nivel y el dia en que se movio, en que el precio lo rompio (o None).
 
     Stop: basta con tocarlo intradia (ahi salta la orden). Entrada: un soporte (compra) o una
     resistencia (venta) falla si el cierre lo pierde; un nivel de ruptura no se puede fallar asi.
+    Si devuelve el propio `moved_on`, el video pudo publicarse antes o despues de la ruptura.
     """
-    start, end = as_date(set_on), as_date(moved_on) - timedelta(days=1)
+    start, end = as_date(set_on), as_date(moved_on)
     if end < start:
         return None
     hist, _ = load_history(yf, ticker, start, end + timedelta(days=1))
@@ -1022,7 +1023,11 @@ def evaluate_thread(yf, thread: dict, today: datetime) -> dict:
     for rev in thread["revisions"]:
         item = {k: rev[k] for k in ("field", "from", "to", "kind", "date", "timestamp_url")}
         if rev["kind"] == "moved" and rev["field"] in ("stop_loss", "entry_level"):
-            item["after_breach"] = breach_date(yf, thread["ticker"], side, rev["field"], rev["from"], rev["previous_set_on"], rev["date"])
+            broken = breach_date(yf, thread["ticker"], side, rev["field"], rev["from"], rev["previous_set_on"], rev["date"])
+            # El dia del cambio no cuenta como "despues": no sabemos si el video salio antes o despues del cierre.
+            item["after_breach"] = broken if broken and broken < rev["date"] else None
+            if broken == rev["date"]:
+                item["after_breach_same_day"] = broken
         revisions.append(item)
 
     return {
@@ -1062,6 +1067,7 @@ def build_scorecard(analyst: dict, threads: list, rows: list) -> dict:
     moved = [(t, r) for t in threads for r in t["revisions"] if r["kind"] == "moved"]
     level_moves = [(t, r) for t, r in moved if r["field"] in LEVEL_FIELDS]
     breached = sum(1 for row in rows for r in row.get("revisions", []) if r.get("after_breach"))
+    same_day = sum(1 for row in rows for r in row.get("revisions", []) if r.get("after_breach_same_day"))
     closures = {reason: sum(1 for t in threads if t["closed"] and t["closed"]["reason"] == reason) for reason in CLOSE_REASONS}
     n = overall["evaluated"]
     return {
@@ -1081,6 +1087,7 @@ def build_scorecard(analyst: dict, threads: list, rows: list) -> dict:
                 if r["field"] == "stop_loss" and ((r["to"] < r["from"]) if t["side"] == "BUY" else (r["to"] > r["from"]))
             ),
             "moved_after_breach": breached,
+            "moved_same_day_as_breach": same_day,
             "expiry_changes": sum(1 for _, r in moved if r["field"] == "expiry_date"),
         },
         "closures": closures,
@@ -1199,7 +1206,7 @@ Codigos de salida: 0 ok, 2 entrada invalida, 3 error remoto (YouTube/Yahoo), 4 f
     p_rss.add_argument("--keyword", default=None, help="Regex que debe aparecer en el titulo")
     p_rss.add_argument("--exclude", default=None, help="Regex que descarta el video si aparece en el titulo")
     p_rss.add_argument("--since", default=None, help="Solo videos publicados desde YYYY-MM-DD")
-    p_rss.add_argument("--limit", type=int, default=10)
+    p_rss.add_argument("--limit", type=int, default=15, help="Maximo de videos devueltos (el RSS trae ~15)")
 
     p_tr = sub.add_parser("transcript", help="Descarga subtitulos con marcas de tiempo")
     p_tr.add_argument("--video", required=True, help="URL o video_id")
