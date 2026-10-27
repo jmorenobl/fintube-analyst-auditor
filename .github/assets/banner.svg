@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-label="FinTube Analyst Auditor">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1626"/>
+      <stop offset="1" stop-color="#0f2e2a"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#34d399" stop-opacity="0"/>
+      <stop offset="0.3" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#34d399"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="400" rx="24" fill="url(#bg)"/>
+
+  <!-- Rejilla tenue -->
+  <g stroke="#ffffff" stroke-opacity="0.05">
+    <line x1="0" y1="100" x2="1280" y2="100"/>
+    <line x1="0" y1="200" x2="1280" y2="200"/>
+    <line x1="0" y1="300" x2="1280" y2="300"/>
+  </g>
+
+  <!-- Velas japonesas -->
+  <g transform="translate(875 95) scale(0.82)">
+    <g stroke-width="3">
+      <line x1="20" y1="150" x2="20" y2="250" stroke="#f87171"/><rect x="8" y="170" width="24" height="60" rx="3" fill="#f87171"/>
+      <line x1="70" y1="140" x2="70" y2="240" stroke="#34d399"/><rect x="58" y="160" width="24" height="55" rx="3" fill="#34d399"/>
+      <line x1="120" y1="120" x2="120" y2="210" stroke="#34d399"/><rect x="108" y="135" width="24" height="55" rx="3" fill="#34d399"/>
+      <line x1="170" y1="130" x2="170" y2="200" stroke="#f87171"/><rect x="158" y="140" width="24" height="40" rx="3" fill="#f87171"/>
+      <line x1="220" y1="90" x2="220" y2="180" stroke="#34d399"/><rect x="208" y="105" width="24" height="60" rx="3" fill="#34d399"/>
+      <line x1="270" y1="60" x2="270" y2="150" stroke="#34d399"/><rect x="258" y="75" width="24" height="55" rx="3" fill="#34d399"/>
+      <line x1="320" y1="70" x2="320" y2="140" stroke="#fbbf24"/><rect x="308" y="85" width="24" height="35" rx="3" fill="#fbbf24"/>
+      <line x1="370" y1="30" x2="370" y2="120" stroke="#34d399"/><rect x="358" y="45" width="24" height="55" rx="3" fill="#34d399"/>
+    </g>
+    <polyline points="-10,230 20,200 70,188 120,160 170,160 220,135 270,102 320,102 370,72 430,50" fill="none" stroke="url(#line)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Boton de play -->
+  <g transform="translate(80 92)">
+    <rect width="84" height="60" rx="16" fill="#ef4444"/>
+    <path d="M34 18 L56 30 L34 42 Z" fill="#ffffff"/>
+  </g>
+
+  <!-- Semaforo -->
+  <g transform="translate(184 102)">
+    <rect width="132" height="40" rx="20" fill="#ffffff" fill-opacity="0.08"/>
+    <circle cx="28" cy="20" r="11" fill="#34d399"/>
+    <circle cx="66" cy="20" r="11" fill="#fbbf24"/>
+    <circle cx="104" cy="20" r="11" fill="#f87171"/>
+  </g>
+
+  <text x="80" y="232" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="64" font-weight="800" fill="#ffffff" letter-spacing="-1">FinTube Analyst Auditor</text>
+  <text x="80" y="284" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="27" fill="#cbd5e1">Lo que dicen los analistas de YouTube,</text>
+  <text x="80" y="320" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="27" fill="#cbd5e1">resumido en un semáforo y <tspan fill="#34d399" font-weight="700">auditado con precios reales</tspan>.</text>
+</svg>
