@@ -6,6 +6,8 @@
 #     "yfinance>=0.2.40",
 # ]
 # ///
+# SPDX-License-Identifier: EUPL-1.2
+# Copyright (c) 2026 Jorge MB
 """
 CLI auxiliar para el Agent Skill 'fintube-analyst-auditor'.
 Compatible con el estandar Agent Skills (agentskills.io).

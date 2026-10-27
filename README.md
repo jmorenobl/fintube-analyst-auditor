@@ -9,7 +9,7 @@
 <br>
 
 [![Versión](https://img.shields.io/badge/versión-0.1.0-34d399?style=for-the-badge)](CHANGELOG.md)
-[![Licencia MIT](https://img.shields.io/badge/licencia-MIT-0f2e2a?style=for-the-badge)](LICENSE)
+[![Licencia EUPL 1.2](https://img.shields.io/badge/licencia-EUPL_1.2-0f2e2a?style=for-the-badge)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/estándar-Agent_Skills-0b1626?style=for-the-badge)](https://agentskills.io)
 [![Gratis](https://img.shields.io/badge/sin_API_de_pago-gratis-fbbf24?style=for-the-badge)](#-requisitos)
 
@@ -22,7 +22,7 @@
 ![Copilot](https://img.shields.io/badge/Copilot-24292F?style=flat-square&logo=githubcopilot&logoColor=white)
 ![+ más](https://img.shields.io/badge/+_más-555555?style=flat-square)
 
-[**Instalar**](#-instalación) · [**Qué hace**](#-qué-hace) · [**Ejemplos**](#-ejemplos-de-preguntas) · [**Preguntas frecuentes**](#-lo-que-conviene-saber)
+[**Instalar**](#-instalación) · [**Qué hace**](#-qué-hace) · [**Ejemplos**](#-ejemplos-de-preguntas) · [**Analistas**](#-analistas-que-ya-conoce) · [**Preguntas frecuentes**](#-lo-que-conviene-saber)
 
 </div>
 
@@ -89,6 +89,23 @@ Y si le cuentas qué acciones tienes, **te avisa cuando un analista cambia de op
 | 🔴 **VENDER** | Solaria | `SLR.MC` | — | — | — | ▶️ 00:03:10 |
 
 > ⏱️ **Análisis de mercado: 18 de 52 minutos (35 %).** El resto, tertulia política y autopromoción.
+
+<br>
+
+## 📺 Analistas que ya conoce
+
+La skill viene con estos canales comprobados, así que basta con decir el nombre:
+
+| Analista | Dónde | Cuándo |
+| :-- | :-- | :-- |
+| **Alberto Iturralde y Miguel Méndez** | [Especulación en Bolsa](https://www.youtube.com/@especulacionenbolsa) | Cada día laborable. Mercado general, índices, oro, plata, petróleo, bitcoin y los mismos valores españoles con soportes y resistencias actualizados a diario. |
+| **Alberto Iturralde** | [Capital Radio](https://www.youtube.com/channel/UCmU9b04Ym19_OvsSdt7rRYg) | Lunes 18:00 (*Mercado Abierto*), viernes 09:30 (*Capital, la Bolsa y la Vida*) y *Clase Magistral* con Laura Blanco los viernes. |
+| **Miguel Méndez** | *Capital Intereconomía* | Miércoles de 11:00 a 12:00. Pásale el enlace del vídeo a tu asistente. |
+
+> [!TIP]
+> Como en Especulación en Bolsa repasan los mismos valores cada día, puedes preguntar *"¿qué ha cambiado respecto a ayer?"* y la skill te dirá solo qué soportes o recomendaciones se han movido.
+
+¿Sigues a otro analista? Pásale a tu asistente el enlace de su canal. Y si quieres que lo incluyamos para todos, [abre una propuesta](https://github.com/jmorenobl/fintube-analyst-auditor/issues).
 
 <br>
 
@@ -226,7 +243,7 @@ Solo en tu ordenador, en <code>~/.fintube/portfolio.json</code>. No se envía a 
 <details>
 <summary><b>📡 Le pregunto por un analista y me enseña vídeos antiguos</b></summary>
 <br>
-Muchos analistas no publican en su propio canal. Alberto Iturralde, por ejemplo, sale sobre todo en canales de terceros. Dile a tu asistente qué canal quieres que revise.
+Muchos analistas no publican en su propio canal: el canal personal de Alberto Iturralde, por ejemplo, no sube vídeos desde 2021. Los canales de la tabla de <a href="#-analistas-que-ya-conoce">analistas</a> ya están comprobados. Para otros, dile a tu asistente qué canal quieres que revise.
 </details>
 
 <br>
@@ -247,7 +264,7 @@ Muchos analistas no publican en su propio canal. Alberto Iturralde, por ejemplo,
 └── skills/fintube-analyst-auditor/
     ├── SKILL.md                # Instrucciones para el agente
     ├── scripts/fintube_cli.py  # CLI: resolve-channel, scan-rss, transcript, audit, portfolio
-    ├── references/             # Esquema de señales y diccionario de tickers
+    ├── references/             # Esquema de señales, tickers y analistas conocidos
     └── evals/evals.json        # Casos de prueba (formato agentskills.io)
 ```
 
@@ -271,7 +288,7 @@ git tag v0.1.0 && git push --tags
 
 GitHub Actions genera el ZIP y la release.
 
-**Contribuir:** las mejoras son bienvenidas, sobre todo nuevos tickers en `references/extraction_schema.md` y *gotchas* detectados al usar la skill.
+**Contribuir:** las mejoras son bienvenidas, sobre todo nuevos analistas en `references/analysts.md`, tickers en `references/extraction_schema.md` y *gotchas* detectados al usar la skill. Al contribuir aceptas que tu aportación se publique bajo la EUPL v1.2.
 
 </details>
 
@@ -280,11 +297,11 @@ GitHub Actions genera el ZIP y la release.
 <details>
 <summary>🇬🇧 <b>English</b></summary>
 <br>
-Agent Skill that turns YouTube stock-market videos (mainly Spanish) into a buy/hold/sell table with timestamps, and audits past calls against Yahoo Finance prices and a benchmark. Install with <code>npx skills add jmorenobl/fintube-analyst-auditor</code>, as a Claude Code plugin, or upload the release ZIP to Claude.ai or ChatGPT. Not financial advice. MIT licensed.
+Agent Skill that turns YouTube stock-market videos (mainly Spanish) into a buy/hold/sell table with timestamps, and audits past calls against Yahoo Finance prices and a benchmark. Install with <code>npx skills add jmorenobl/fintube-analyst-auditor</code>, as a Claude Code plugin, or upload the release ZIP to Claude.ai or ChatGPT. Not financial advice. Licensed under the EUPL v1.2.
 </details>
 
 <br>
 
 <div align="center">
-<sub>Hecho con ☕ y 📈 · <a href="LICENSE">Licencia MIT</a> · No es asesoramiento financiero</sub>
+<sub>Hecho con ☕ y 📈 · <a href="LICENSE">Licencia EUPL v1.2</a> · No es asesoramiento financiero</sub>
 </div>

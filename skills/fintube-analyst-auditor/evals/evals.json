@@ -15,10 +15,11 @@
     {
       "id": 2,
       "prompt": "que ha dicho ultimamente alberto iturralde?",
-      "expected_output": "El agente resuelve el canal, detecta que el canal propio no publica desde 2021 y lo explica, proponiendo buscar sus intervenciones en canales de terceros en lugar de resumir vídeos antiguos como si fueran recientes.",
+      "expected_output": "El agente consulta references/analysts.md, escanea Especulación en Bolsa (UCugd6tlorqt5KTqqB8bKyrg) sin filtrar por palabra clave, resume el vídeo más reciente y no usa el canal personal inactivo desde 2021.",
       "assertions": [
-        "Se usó resolve-channel o scan-rss para localizar el canal",
-        "La respuesta indica las fechas de publicación de los vídeos encontrados",
+        "Se ejecutó scan-rss con --channel-id UCugd6tlorqt5KTqqB8bKyrg",
+        "No se usó --keyword al escanear Especulación en Bolsa",
+        "La respuesta indica la fecha de publicación del vídeo resumido",
         "No presenta vídeos de 2021 como opiniones recientes"
       ]
     },

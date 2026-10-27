@@ -1,7 +1,7 @@
 ---
 name: fintube-analyst-auditor
-description: Extrae recomendaciones de inversion bursatil de videos de YouTube, filtra canales por analista mediante RSS, limpia tertulias no financieras y audita la tasa de acierto de los expertos comparando precios historicos en Yahoo Finance y el estado de la cartera del usuario. Usar cuando el usuario pida resumir videos de bolsa, auditar a un analista financiero de YouTube (p. ej. Alberto Iturralde, Capital Radio, Negocios TV), consultar el semaforo de compra/venta de un experto o cruzar señales de YouTube con su cartera.
-license: MIT
+description: Extrae recomendaciones de inversion bursatil de videos de YouTube, filtra canales por analista mediante RSS, limpia tertulias no financieras y audita la tasa de acierto de los expertos comparando precios historicos en Yahoo Finance y el estado de la cartera del usuario. Usar cuando el usuario pida resumir videos de bolsa, auditar a un analista financiero de YouTube (p. ej. Alberto Iturralde, Miguel Mendez, Especulacion en Bolsa, Capital Radio, Intereconomia), consultar el semaforo de compra/venta de un experto o cruzar señales de YouTube con su cartera.
+license: EUPL-1.2
 compatibility: Requiere Python 3.9+ y acceso a internet (youtube.com y finance.yahoo.com). Recomendado uv. En apps de chat con sandbox (Claude.ai, ChatGPT) hay que permitir el acceso de red a esos dominios.
 metadata:
   author: jmorenobl
@@ -35,14 +35,14 @@ uv run scripts/fintube_cli.py <subcomando> ...
 
 Si el usuario da una URL, salta al paso 2. Si pregunta *"¿Que ha dicho hoy Iturralde?"*:
 
-1. Busca el canal en `followed_analysts` (`portfolio --action list`). Si no esta, resuelve el handle:
+1. Si nombra a un analista o programa, lee `references/analysts.md`: tiene los canales comprobados, los horarios, el filtro adecuado y como interpretar cada fuente. Si no aparece, busca en `followed_analysts` (`portfolio --action list`) o resuelve el handle:
    ```bash
-   uv run scripts/fintube_cli.py resolve-channel --channel "@AlbertoIturralde"
+   uv run scripts/fintube_cli.py resolve-channel --channel "@especulacionenbolsa"
    ```
    Comprueba que `channel_title` corresponde al canal esperado antes de seguir.
 2. Escanea el RSS filtrando por regex en el titulo:
    ```bash
-   uv run scripts/fintube_cli.py scan-rss --channel-id UC4NCu44AQXnhscxeDrdgvow --keyword "Iturralde" --exclude "short" --since 2026-10-01
+   uv run scripts/fintube_cli.py scan-rss --channel-id UCmU9b04Ym19_OvsSdt7rRYg --keyword "Iturralde|Consultorio" --exclude "#shorts" --since 2026-10-01
    ```
 3. Ofrece guardar el canal para la proxima vez: `portfolio --action follow --analyst "Alberto Iturralde" --channel-id UC... --keyword Iturralde`.
 
@@ -88,9 +88,9 @@ Señala cualquier contradiccion entre posiciones abiertas y señales nuevas (p. 
 
 ## Gotchas
 
-- **Los analistas no siempre publican en su canal.** El canal propio de Alberto Iturralde no sube videos desde 2021; sus intervenciones actuales salen en canales de terceros (Negocios TV, Capital Radio...). Si el RSS devuelve videos antiguos, dilo y escanea esos canales con `--keyword "Iturralde"`.
-- **Los handles enganan.** `@CapitalRadio` es una radio britanica, no la española. Verifica siempre `channel_title` y el idioma de los titulos.
-- **El RSS solo trae los ~15 ultimos videos.** Para videos mas antiguos pide la URL al usuario.
+- **Los analistas no siempre publican en su canal.** El canal propio de Alberto Iturralde no sube videos desde 2021; lo actual esta en Especulacion en Bolsa y Capital Radio (ver `references/analysts.md`). Si el RSS devuelve videos antiguos, dilo en vez de presentarlos como recientes.
+- **Los handles enganan.** `@CapitalRadio` es una radio britanica, no la española, y `@intereconomia` esta abandonado. Verifica siempre `channel_title` y la fecha del ultimo video.
+- **El RSS solo trae los ~15 ultimos videos.** En canales que suben mucho (Capital Radio, ~15 al dia) eso es un solo dia. Para videos mas antiguos pide la URL al usuario.
 - **Los subtitulos suelen ser automaticos** (`is_generated: true`) y deforman nombres y cifras (empresas mal transcritas, "1 75" por "1,75 %"). Deduce la empresa por contexto, marca la señal como `ambiguous` si dudas y no inventes niveles de precio.
 - **YouTube bloquea a veces la descarga de subtitulos** desde IPs de servidores en la nube (error de tipo `RequestBlocked`/`IpBlocked`). Explicalo y sugiere ejecutar la skill en el ordenador del usuario; no resumas el video sin transcripcion.
 - **Yahoo usa tickers con sufijo de mercado** (`.MC` Madrid). Si `audit` responde "Sin datos", el ticker esta mal, no el analista.

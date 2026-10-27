@@ -8,6 +8,6 @@
   },
   "homepage": "https://github.com/jmorenobl/fintube-analyst-auditor",
   "repository": "https://github.com/jmorenobl/fintube-analyst-auditor",
-  "license": "MIT",
+  "license": "EUPL-1.2",
   "keywords": ["youtube", "bolsa", "inversion", "yahoo-finance", "finanzas", "es"]
 }
