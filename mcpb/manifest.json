@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "fintube-analyst-auditor",
+  "display_name": "FinTube Analyst Auditor",
+  "version": "0.4.0",
+  "description": "Resume videos de bolsa de YouTube en un semaforo de compra/venta y audita si el analista acerto con precios reales de Yahoo Finance",
+  "long_description": "Descarga los subtitulos de videos de bolsa de YouTube, los precios de Yahoo Finance y guarda en tu ordenador el historial de señales y tu cartera (~/.fintube). Todo se ejecuta en tu ordenador, asi que YouTube no bloquea las descargas como hace con las apps en la nube. No es asesoramiento financiero.",
+  "author": {
+    "name": "Jorge MB",
+    "url": "https://github.com/jmorenobl"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmorenobl/fintube-analyst-auditor"
+  },
+  "homepage": "https://github.com/jmorenobl/fintube-analyst-auditor",
+  "support": "https://github.com/jmorenobl/fintube-analyst-auditor/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "uv",
+    "entry_point": "server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "server.py"]
+    }
+  },
+  "tools": [
+    {"name": "guia", "description": "Instrucciones de la skill y sus referencias"},
+    {"name": "resolve_channel", "description": "Obtiene el channel_id de un canal de YouTube"},
+    {"name": "scan_rss", "description": "Ultimos videos de un canal filtrados por titulo"},
+    {"name": "transcript", "description": "Subtitulos de un video con marcas de tiempo"},
+    {"name": "audit", "description": "Rentabilidad y alpha en Yahoo Finance desde la fecha de la señal"},
+    {"name": "portfolio", "description": "Cartera local y analistas seguidos"},
+    {"name": "signals", "description": "Historial de señales por analista"},
+    {"name": "scorecard", "description": "Tabla de aciertos por analista"}
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "python": ">=3.10"
+    }
+  },
+  "keywords": ["youtube", "bolsa", "inversion", "yahoo-finance", "finanzas", "es"],
+  "license": "EUPL-1.2"
+}

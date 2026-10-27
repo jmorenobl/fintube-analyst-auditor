@@ -2,10 +2,10 @@
 name: fintube-analyst-auditor
 description: Extrae recomendaciones de inversion bursatil de videos de YouTube, filtra canales por analista mediante RSS, limpia tertulias no financieras y audita la tasa de acierto de los expertos comparando precios historicos en Yahoo Finance y el estado de la cartera del usuario. Usar cuando el usuario pida resumir videos de bolsa, auditar a un analista financiero de YouTube (p. ej. Alberto Iturralde, Miguel Mendez, Especulacion en Bolsa, Capital Radio, Intereconomia), consultar el semaforo de compra/venta de un experto, ver si un analista ha movido sus soportes o stops, pedir su historial o tabla de aciertos, o cruzar señales de YouTube con su cartera.
 license: EUPL-1.2
-compatibility: Requiere Python 3.9+ y acceso a internet (youtube.com y finance.yahoo.com). Recomendado uv. En apps de chat con sandbox (Claude.ai, ChatGPT) hay que permitir el acceso de red a esos dominios.
+compatibility: Requiere Python 3.9+ y acceso a internet (youtube.com y finance.yahoo.com). Recomendado uv. En apps de chat con sandbox (Claude.ai, ChatGPT) hay que permitir el acceso de red a esos dominios. En Claude Desktop, la extension .mcpb trae las herramientas y no necesita Python ni uv.
 metadata:
   author: jmorenobl
-  version: "0.3.1"
+  version: "0.4.0"
   repository: https://github.com/jmorenobl/fintube-analyst-auditor
 ---
 
@@ -23,12 +23,20 @@ uv run scripts/fintube_cli.py <subcomando> ...
 
 `uv run` instala solo las dependencias (metadatos PEP 723 del script). Si `uv` no existe, ejecuta `pip install youtube-transcript-api yfinance` una vez y usa `python3 scripts/fintube_cli.py`. Si tampoco hay Python, explica al usuario en lenguaje sencillo que necesita instalarlo.
 
+### Si tienes las herramientas de FinTube (extension de Claude Desktop)
+
+Si tienes las herramientas `guia`, `transcript`, `scan_rss`, `audit`, `signals`... del servidor `fintube`, usalas en vez de `uv run`: cada una es el subcomando del mismo nombre (con guion bajo en vez de guion) con las mismas opciones, y devuelve el mismo JSON. Diferencias:
+
+- `signals` con `action: "record"`: pasa el objeto JSON del video en `record`, no un fichero en `--input`.
+- Los ficheros de `references/` te los da `guia` con `documento`: `analysts`, `extraction_schema` o `signal_history`.
+- Se ejecutan en el ordenador del usuario: YouTube no bloquea como en la nube y la cartera y el historial se conservan entre conversaciones.
+
 ### Si no puedes ejecutar el CLI
 
 Algunas apps cargan este texto pero no ejecutan programas ni leen `references/` (p. ej. la app de Gemini). Sin el CLI no tienes los subtitulos con su minuto, ni precios, ni historial, y el usuario no lo sabe: si respondes igual, creera que los minutos y niveles salen del video. Por eso:
 
 1. Dilo en la primera frase: "No puedo ejecutar las herramientas de la skill en esta app, asi que no puedo descargar el video, comprobar precios ni guardar el historial."
-2. Ofrece la alternativa: que pegue la transcripcion (en YouTube, **Mas → Mostrar transcripcion**, copiar y pegar) o que use la skill en un asistente que trabaje en su ordenador (Claude Code, Gemini CLI, Codex...).
+2. Ofrece la alternativa: que pegue la transcripcion (en YouTube, **Mas → Mostrar transcripcion**, copiar y pegar) o que use la skill en la app de escritorio de Claude con la extension de FinTube, o en un asistente que trabaje en su ordenador (Claude Code, Codex...).
 3. Con una transcripcion pegada, sigue el paso 3 con sus minutos. Sin ella, no des señales, minutos ni niveles: ni de memoria, ni por el titulo, ni por un resumen del video.
 
 ## Flujo
@@ -140,7 +148,7 @@ No uses imperativos ni valoraciones sobre lo que el usuario deberia hacer, aunqu
 - **Los subtitulos suelen ser automaticos** (`is_generated: true`) y deforman nombres y cifras (empresas mal transcritas, "1 75" por "1,75 %"). Deduce la empresa por contexto, marca la señal como `ambiguous` si dudas y no inventes niveles de precio.
 - **YouTube bloquea a veces la descarga de subtitulos** desde IPs de servidores en la nube (error de tipo `RequestBlocked`/`IpBlocked`), y tambien desde el ordenador del usuario tras muchas descargas seguidas. Explicalo, sugiere ejecutar la skill en su ordenador, esperar unas horas o pegar la transcripcion; no resumas el video sin ella.
 - **Yahoo usa tickers con sufijo de mercado** (`.MC` Madrid). Sin sufijo, `IAG` es una minera de oro canadiense y `SAN` el ADR en dolares. Si `audit` responde "Sin datos" o la divisa no es EUR, el ticker esta mal, no el analista.
-- **En apps de chat con sandbox** la cartera y el historial de `~/.fintube` pueden borrarse al cerrar la sesion. Avisa al usuario de que solo persisten en agentes locales.
+- **En apps de chat con sandbox** la cartera y el historial de `~/.fintube` pueden borrarse al cerrar la sesion. Avisa al usuario de que solo persisten en agentes locales o con la extension de Claude Desktop.
 
 ## Salida
 

@@ -8,19 +8,14 @@
 
 <br>
 
-[![Versión](https://img.shields.io/badge/versión-0.3.1-34d399?style=for-the-badge)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/versión-0.4.0-34d399?style=for-the-badge)](CHANGELOG.md)
 [![Licencia EUPL 1.2](https://img.shields.io/badge/licencia-EUPL_1.2-0f2e2a?style=for-the-badge)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/estándar-Agent_Skills-0b1626?style=for-the-badge)](https://agentskills.io)
 [![Gratis](https://img.shields.io/badge/sin_API_de_pago-gratis-fbbf24?style=for-the-badge)](#-requisitos)
 
-![Claude](https://img.shields.io/badge/Claude-D97757?style=flat-square&logo=anthropic&logoColor=white)
-![ChatGPT](https://img.shields.io/badge/ChatGPT-10A37F?style=flat-square&logo=openai&logoColor=white)
-![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-4285F4?style=flat-square&logo=googlegemini&logoColor=white)
-![Antigravity](https://img.shields.io/badge/Antigravity-4285F4?style=flat-square&logo=google&logoColor=white)
-![Codex](https://img.shields.io/badge/Codex-000000?style=flat-square&logo=openai&logoColor=white)
-![Cursor](https://img.shields.io/badge/Cursor-000000?style=flat-square)
-![Copilot](https://img.shields.io/badge/Copilot-24292F?style=flat-square&logo=githubcopilot&logoColor=white)
-![+ más](https://img.shields.io/badge/+_más-555555?style=flat-square)
+![Claude Desktop](https://img.shields.io/badge/Claude_Desktop-D97757?style=flat-square&logo=anthropic&logoColor=white)
+![Claude Code](https://img.shields.io/badge/Claude_Code-D97757?style=flat-square&logo=anthropic&logoColor=white)
+![claude.ai](https://img.shields.io/badge/claude.ai-D97757?style=flat-square&logo=anthropic&logoColor=white)
 
 [**Instalar**](#-instalación) · [**Qué hace**](#-qué-hace) · [**Ejemplos**](#-ejemplos-de-preguntas) · [**Analistas**](#-analistas-que-ya-conoce) · [**Preguntas frecuentes**](#-lo-que-conviene-saber)
 
@@ -117,15 +112,14 @@ La skill viene con estos canales comprobados, así que basta con decir el nombre
 
 ### ¿Funciona en mi app?
 
-La skill necesita **ejecutar un pequeño programa** que descarga los subtítulos de YouTube y los precios de Yahoo Finance. No todas las apps pueden hacerlo, aunque te dejen instalar la skill:
+La skill está hecha y probada para **Claude**. Necesita **ejecutar un pequeño programa** en tu ordenador que descarga los subtítulos de YouTube y los precios de Yahoo Finance, y no todas las apps pueden hacerlo, aunque te dejen instalar la skill:
 
 | App | ¿Funciona? | Ve a… |
 | :-- | :-- | :-- |
-| Claude Code, Codex, Gemini CLI, Antigravity, Cursor, Windsurf, OpenCode, Copilot | ✅ **Sí, completa.** Trabajan en tu ordenador. | [Opción 1](#opcion-1) ⭐ |
-| Claude (web o app de escritorio) | ⚠️ **Con límites.** Funciona, pero YouTube suele bloquear los subtítulos desde la nube y el historial se pierde al cerrar el chat. | [Opción 2](#opcion-2) ⭐⭐ |
-| ChatGPT (Business, Enterprise y Edu) | ⚠️ **Con límites.** Los mismos que Claude en la web. | [Opción 3](#opcion-3) ⭐⭐ |
-| Gemini (web o app) | ❌ **No.** Te deja subirla, pero solo lee las instrucciones: no ejecuta el programa, así que no tiene los subtítulos reales, ni precios, ni historial. Puede darte minutos y cifras aproximados o inventados. Usa **Gemini CLI**. | [Opción 1](#opcion-1) |
-| La terminal (ya sabes lo que es) | ✅ **Sí, completa.** | [Opción 4](#opcion-4) ⭐⭐⭐ |
+| **Claude, app de escritorio** (Mac y Windows) | ✅ **Sí, completa.** Se instala con doble clic, sin Python ni terminal. | [Opción 1](#opcion-1) ⭐ |
+| **Claude Code** | ✅ **Sí, completa.** | [Opción 2](#opcion-2) ⭐⭐ |
+| **Claude en la web** (claude.ai) | ⚠️ **Con límites.** YouTube suele bloquear los subtítulos desde la nube y el historial se pierde al cerrar el chat. | [Opción 3](#opcion-3) ⭐⭐ |
+| ChatGPT, Gemini, Codex, Cursor y otras | No son compatibles oficialmente. Algunas funcionan y otras no. | [Otras apps](#otras-apps) |
 
 > [!WARNING]
 > Si tu asistente contesta **sin** decirte que ha descargado la transcripción, desconfía de los minutos y los niveles que te dé: probablemente tu app no puede ejecutar la skill. Mira [Algo no funciona](#-algo-no-funciona).
@@ -133,9 +127,67 @@ La skill necesita **ejecutar un pequeño programa** que descarga los subtítulos
 <br>
 
 <a id="opcion-1"></a>
-### 1️⃣ Pídeselo a tu asistente &nbsp;<sub>⭐ la más fácil</sub>
+### 1️⃣ Claude, app de escritorio &nbsp;<sub>⭐ la más fácil</sub>
 
-Para cualquier asistente que trabaje **en tu ordenador**. Copia este mensaje y pégalo tal cual:
+Se instala como una **extensión**: un archivo que abres con doble clic. Trae el programa y las instrucciones, y todo se ejecuta en tu ordenador.
+
+| Paso | Qué hacer |
+| :-: | :-- |
+| **1** | Instala la [app de escritorio de Claude](https://claude.ai/download) si no la tienes. |
+| **2** | Descarga **`fintube-analyst-auditor.mcpb`** desde la [página de versiones](https://github.com/jmorenobl/fintube-analyst-auditor/releases/latest). |
+| **3** | Ábrelo con doble clic. Se abrirá Claude: pulsa **Instalar**. |
+| **4** | Abre un chat nuevo y pregunta, por ejemplo: *"Resúmeme este vídeo y dime qué recomienda comprar: https://youtu.be/..."* |
+
+> [!TIP]
+> La primera vez tarda un minuto: la extensión descarga lo que necesita. Después va rápido.
+
+> [!NOTE]
+> No hace falta subir el ZIP de la skill ni activar la ejecución de código: la extensión ya trae las instrucciones. Si el doble clic no funciona, en Claude ve a **Configuración → Extensiones** y arrastra ahí el archivo. Los nombres de los menús cambian a menudo; si no los encuentras, pregúntale a Claude: *"¿Cómo instalo una extensión .mcpb?"*
+
+<br>
+
+<a id="opcion-2"></a>
+### 2️⃣ Claude Code
+
+Instálala como plugin (con actualizaciones):
+
+```text
+/plugin marketplace add jmorenobl/fintube-analyst-auditor
+/plugin install fintube-analyst-auditor@fintube
+```
+
+O pídeselo a Claude Code con este mensaje:
+
+```text
+Instala la skill de https://github.com/jmorenobl/fintube-analyst-auditor
+para que esté disponible en todos mis proyectos. Comprueba también que
+tengo Python 3 y uv, y si no, explícame en lenguaje sencillo cómo
+instalarlos. Al terminar, dime cómo usarla.
+```
+
+<br>
+
+<a id="opcion-3"></a>
+### 3️⃣ Claude en la web &nbsp;<sub>claude.ai</sub>
+
+| Paso | Qué hacer |
+| :-: | :-- |
+| **1** | Descarga **`fintube-analyst-auditor.zip`** desde la [página de versiones](https://github.com/jmorenobl/fintube-analyst-auditor/releases/latest). **No lo descomprimas.** |
+| **2** | En Claude, ve a **Configuración → Capacidades** y activa **Ejecución de código y creación de archivos**. |
+| **3** | En esa misma sección, añade estos dominios a la lista de permitidos:<br>`youtube.com` · `www.youtube.com` · `finance.yahoo.com` · `query1.finance.yahoo.com` · `query2.finance.yahoo.com` |
+| **4** | Ve a **Personalizar → Skills**, pulsa **+ Crear skill → Subir una skill** y elige el ZIP. |
+
+> [!IMPORTANT]
+> Sin el paso 3 la skill no puede descargar ni vídeos ni precios. Aun así, YouTube bloquea a menudo las descargas desde la nube: si usas Claude a menudo, la [app de escritorio](#opcion-1) funciona mejor.
+
+<br>
+
+<a id="otras-apps"></a>
+### Otras apps
+
+No las probamos con cada versión, así que no te garantizamos que funcionen. Esto es lo que puedes hacer en cada caso:
+
+**Asistentes que trabajan en tu ordenador** (Codex, Gemini CLI, Antigravity, Cursor, Windsurf, OpenCode, Copilot): suelen funcionar, porque pueden ejecutar el programa. Pídele a tu asistente que la instale con este mensaje:
 
 ```text
 Instala la skill de https://github.com/jmorenobl/fintube-analyst-auditor
@@ -146,47 +198,25 @@ Comprueba también que tengo Python 3 y uv, y si no, explícame en
 lenguaje sencillo cómo instalarlos. Al terminar, dime cómo usarla.
 ```
 
-> [!TIP]
-> El asistente hará el resto y te pedirá permiso antes de cada paso. Solo tienes que ir diciendo que sí.
+**ChatGPT** (planes Business, Enterprise y Edu): puedes subir el ZIP en **Skills → Crear → Subir desde tu ordenador**. Tiene los mismos límites que Claude en la web: YouTube suele bloquear las descargas y el historial se pierde.
 
-<br>
+**Gemini (web o app) y ChatGPT sin skills**: no pueden ejecutar el programa, así que no tienen los subtítulos reales, ni precios, ni historial. Gemini te deja subir la skill, pero solo lee las instrucciones y puede darte minutos y cifras aproximados o inventados. Lo que sí puedes hacer es darle tú la transcripción:
 
-<a id="opcion-2"></a>
-### 2️⃣ Claude &nbsp;<sub>claude.ai o la app de escritorio</sub>
+1. En YouTube, debajo del vídeo, pulsa **Más → Mostrar transcripción**.
+2. Selecciona todo el texto de la transcripción, cópialo y pégalo en el chat con un mensaje como:
 
-| Paso | Qué hacer |
-| :-: | :-- |
-| **1** | Descarga **`fintube-analyst-auditor.zip`** desde la [página de versiones](https://github.com/jmorenobl/fintube-analyst-auditor/releases/latest). **No lo descomprimas.** |
-| **2** | En Claude, ve a **Configuración → Capacidades** y activa **Ejecución de código y creación de archivos**. |
-| **3** | En esa misma sección, añade estos dominios a la lista de permitidos:<br>`youtube.com` · `www.youtube.com` · `finance.yahoo.com` · `query1.finance.yahoo.com` · `query2.finance.yahoo.com` |
-| **4** | Ve a **Personalizar → Skills**, pulsa **+ Crear skill → Subir una skill** y elige el ZIP. |
+```text
+Esta es la transcripción de un vídeo de bolsa. Separa el análisis de
+mercado de la tertulia y dame una tabla con cada valor que recomienda
+comprar, mantener o vender, con sus niveles de entrada, stop y objetivo
+y el minuto en que lo dice. Si un nombre o una cifra no está clara,
+márcalo como dudoso. No añadas nada que no esté en la transcripción.
+```
 
-> [!IMPORTANT]
-> Sin el paso 3 la skill no puede descargar ni vídeos ni precios.
-
-> [!TIP]
-> En la **app de escritorio**, conecta una carpeta al chat (menú **+ → Añadir carpeta**). Así la skill se ejecuta en tu ordenador: YouTube bloquea menos y tu historial de señales se conserva entre conversaciones.
-
-<br>
-
-<a id="opcion-3"></a>
-### 3️⃣ ChatGPT &nbsp;<sub>planes Business, Enterprise y Edu</sub>
-
-| Paso | Qué hacer |
-| :-: | :-- |
-| **1** | Descarga **`fintube-analyst-auditor.zip`** desde la [página de versiones](https://github.com/jmorenobl/fintube-analyst-auditor/releases/latest). |
-| **2** | En ChatGPT, abre **Skills → Crear → Subir desde tu ordenador** y elige el ZIP. |
-
-> [!NOTE]
-> Los nombres de los menús de Claude y ChatGPT cambian a menudo. Si no los encuentras, pregúntale a la propia app: *"¿Cómo subo una skill en formato ZIP?"*
-
-<br>
-
-<a id="opcion-4"></a>
-### 4️⃣ Comandos directos &nbsp;<sub>si ya usas la terminal</sub>
+Así tendrás el semáforo, pero no la comprobación con precios reales ni el historial de señales.
 
 <details>
-<summary><b>Ver los comandos</b></summary>
+<summary><b>Comandos para la terminal</b></summary>
 
 <br>
 
@@ -194,13 +224,6 @@ lenguaje sencillo cómo instalarlos. Al terminar, dime cómo usarla.
 
 ```bash
 npx skills add jmorenobl/fintube-analyst-auditor
-```
-
-**Claude Code** (como plugin, con actualizaciones):
-
-```text
-/plugin marketplace add jmorenobl/fintube-analyst-auditor
-/plugin install fintube-analyst-auditor@fintube
 ```
 
 **Gemini CLI:**
@@ -223,6 +246,8 @@ gemini skills install https://github.com/jmorenobl/fintube-analyst-auditor --pat
 <br>
 
 ## ✅ Requisitos
+
+Con la **app de escritorio de Claude** no necesitas nada más: la extensión instala lo que le hace falta. En el resto de apps:
 
 | | Qué necesitas | ¿Por qué? |
 | :-: | :-- | :-- |
@@ -266,10 +291,11 @@ Muchos analistas no publican en su propio canal: el canal personal de Alberto It
 
 | Lo que ves | Por qué pasa | Qué hacer |
 | :-- | :-- | :-- |
-| Responde con un resumen o un semáforo, pero dice que "no pudo ejecutar" o "expandir" ficheros, o no menciona la transcripción | Tu app no ejecuta programas (le pasa a Gemini en la web y en la app) | Usa una app de la [tabla de compatibilidad](#funciona-en-mi-app). No te fíes de esos minutos ni niveles |
-| `RequestBlocked` o "YouTube bloquea la descarga" desde Claude o ChatGPT en la nube | YouTube bloquea los servidores en la nube | Usa un asistente en tu ordenador ([opción 1](#opcion-1)) o, en la app de escritorio de Claude, conecta una carpeta |
+| Responde con un resumen o un semáforo, pero dice que "no pudo ejecutar" o "expandir" ficheros, o no menciona la transcripción | Tu app no ejecuta programas (le pasa a Gemini en la web y en la app) | Usa la [app de escritorio de Claude](#opcion-1) o [pega tú la transcripción](#otras-apps). No te fíes de esos minutos ni niveles |
+| `RequestBlocked` o "YouTube bloquea la descarga" desde Claude o ChatGPT en la nube | YouTube bloquea los servidores en la nube | Usa la [app de escritorio de Claude](#opcion-1) con la extensión |
+| La extensión no aparece o falla al instalarla en la app de escritorio | Una versión antigua de la app o un fallo al descargar lo que necesita la primera vez | Actualiza la app de Claude, reinicíala y vuelve a abrir el archivo `.mcpb`. Si sigue fallando, [abre una incidencia](https://github.com/jmorenobl/fintube-analyst-auditor/issues) |
 | `IpBlocked`, también en tu ordenador | Muchas descargas seguidas: YouTube bloquea tu conexión unas horas | Espera unas horas o cambia de red (por ejemplo, los datos del móvil). Mientras, copia la transcripción desde YouTube (**Más → Mostrar transcripción**) y pégala en el chat |
-| "El historial está vacío" aunque ya registraste vídeos | Las apps en la nube no ven tu ordenador: el historial se guarda en su servidor y se borra | Usa un asistente en tu ordenador o conecta una carpeta en la app de escritorio de Claude |
+| "El historial está vacío" aunque ya registraste vídeos | Las apps en la nube no ven tu ordenador: el historial se guarda en su servidor y se borra | Usa la [app de escritorio de Claude](#opcion-1) con la extensión |
 | El vídeo de hoy no tiene transcripción | Es un directo que aún no ha empezado o acaba de terminar | Espera a que termine (los subtítulos tardan un rato) o pide el del día anterior |
 
 <br>
@@ -286,7 +312,8 @@ Muchos analistas no publican en su propio canal: el canal personal de Alberto It
 ├── .claude-plugin/             # Marketplace y plugin de Claude Code
 ├── .github/
 │   ├── assets/                 # Imágenes del README
-│   └── workflows/              # CI (validación) y release (genera el ZIP)
+│   └── workflows/              # CI (validación) y release (genera el ZIP y el .mcpb)
+├── mcpb/                       # Extensión de Claude Desktop: servidor MCP sobre el CLI
 └── skills/fintube-analyst-auditor/
     ├── SKILL.md                # Instrucciones para el agente
     ├── scripts/fintube_cli.py  # CLI: resolve-channel, scan-rss, transcript, audit, portfolio, signals, scorecard
@@ -306,13 +333,21 @@ uv run skills/fintube-analyst-auditor/scripts/fintube_cli.py --help
 uvx --from "git+https://github.com/agentskills/agentskills#subdirectory=skills-ref" skills-ref validate skills/fintube-analyst-auditor
 ```
 
-**Publicar una versión:** actualiza la versión en `SKILL.md`, `.claude-plugin/plugin.json` y `CHANGELOG.md`, y crea la etiqueta:
+**Probar la extensión de Claude Desktop** (necesita Node.js; genera `dist/fintube-analyst-auditor.mcpb`):
+
+```bash
+mcpb/build.sh
+```
+
+El servidor (`mcpb/server.py`) expone cada subcomando del CLI como una herramienta y lo ejecuta tal cual, más `guia`, que devuelve SKILL.md y las referencias. El paquete lleva una copia de la skill sin `evals/`.
+
+**Publicar una versión:** actualiza la versión en `SKILL.md`, `.claude-plugin/plugin.json`, `mcpb/manifest.json`, `mcpb/pyproject.toml`, `CHANGELOG.md` y la insignia del README, y crea la etiqueta:
 
 ```bash
 git tag vX.Y.Z && git push --tags
 ```
 
-GitHub Actions genera el ZIP y la release.
+GitHub Actions genera el ZIP, el `.mcpb` y la release.
 
 **Contribuir:** las mejoras son bienvenidas, sobre todo nuevos analistas en `references/analysts.md`, tickers en `references/extraction_schema.md` y *gotchas* detectados al usar la skill. Al contribuir aceptas que tu aportación se publique bajo la EUPL v1.2.
 
@@ -323,7 +358,7 @@ GitHub Actions genera el ZIP y la release.
 <details>
 <summary>🇬🇧 <b>English</b></summary>
 <br>
-Agent Skill that turns YouTube stock-market videos (mainly Spanish) into a buy/hold/sell table with timestamps, and audits past calls against Yahoo Finance prices and a benchmark. Install with <code>npx skills add jmorenobl/fintube-analyst-auditor</code>, as a Claude Code plugin, or upload the release ZIP to Claude.ai or ChatGPT. Not financial advice. Licensed under the EUPL v1.2.
+Agent Skill that turns YouTube stock-market videos (mainly Spanish) into a buy/hold/sell table with timestamps, and audits past calls against Yahoo Finance prices and a benchmark. Built and tested for Claude: install the <code>.mcpb</code> extension from the releases page in Claude Desktop (double click, no Python needed), add it as a Claude Code plugin, or upload the release ZIP to claude.ai. Other agents that can run scripts usually work via <code>npx skills add jmorenobl/fintube-analyst-auditor</code>, but are not officially supported. Not financial advice. Licensed under the EUPL v1.2.
 </details>
 
 <br>

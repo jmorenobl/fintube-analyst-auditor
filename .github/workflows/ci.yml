@@ -17,7 +17,7 @@ jobs:
 
       - name: Validar los JSON del repo
         run: |
-          for f in .claude-plugin/*.json skills/*/evals/*.json; do
+          for f in .claude-plugin/*.json mcpb/manifest.json skills/*/evals/*.json; do
             python3 -m json.tool "$f" > /dev/null && echo "ok $f"
           done
 
@@ -26,3 +26,6 @@ jobs:
           S=skills/fintube-analyst-auditor/scripts/fintube_cli.py
           uv run "$S" --help
           HOME="$RUNNER_TEMP" uv run "$S" portfolio --action list
+
+      - name: Validar y empaquetar la extension de Claude Desktop
+        run: mcpb/build.sh

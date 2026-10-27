@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 - 2026-10-27
+
+- Extension para la app de escritorio de Claude (`fintube-analyst-auditor.mcpb`, en cada release): se instala con doble clic, sin Python ni terminal. Se ejecuta en el ordenador del usuario, asi que YouTube no bloquea las descargas como en la nube y la cartera y el historial se conservan entre conversaciones.
+- Servidor MCP (`mcpb/server.py`): una herramienta por subcomando del CLI, con el mismo JSON, y `guia`, que da SKILL.md y las referencias para que la extension funcione sin subir el ZIP de la skill.
+- SKILL.md: usar las herramientas de la extension en vez de `uv run` cuando esten disponibles (`signals` con `record` recibe el JSON del video directamente).
+- README: la skill se declara compatible con Claude (app de escritorio, Claude Code y claude.ai). Nueva seccion "Otras apps" con lo que se puede hacer en cada una, incluido pegar la transcripcion en Gemini o ChatGPT.
+- CI valida y empaqueta la extension; la release publica el `.mcpb` junto al ZIP.
+
 ## 0.3.1 - 2026-10-27
 
 - SKILL.md: si la app no puede ejecutar el CLI (p. ej. la app de Gemini), el agente lo dice en la primera frase, ofrece pegar la transcripcion o usar un asistente local y no da señales, minutos ni niveles sin transcripcion.

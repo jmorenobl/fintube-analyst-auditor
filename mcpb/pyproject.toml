@@ -1,0 +1,11 @@
+[project]
+name = "fintube-analyst-auditor-mcp"
+version = "0.4.0"
+description = "Servidor MCP local de fintube-analyst-auditor (extension .mcpb para Claude Desktop)"
+requires-python = ">=3.10"
+license = "EUPL-1.2"
+dependencies = [
+    "mcp>=2.3,<3",
+    "youtube-transcript-api>=1.0",
+    "yfinance>=0.2.40",
+]

@@ -1,6 +1,7 @@
 name: Release
 
-# Al publicar una etiqueta vX.Y.Z se genera el ZIP que los usuarios suben a Claude.ai o ChatGPT.
+# Al publicar una etiqueta vX.Y.Z se genera el ZIP que los usuarios suben a Claude.ai o ChatGPT
+# y la extension .mcpb para la app de escritorio de Claude.
 on:
   push:
     tags: ["v*"]
@@ -9,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  zip:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +21,9 @@ jobs:
           cd skills
           zip -r ../dist/fintube-analyst-auditor.zip fintube-analyst-auditor -x "*/evals/*" "*__pycache__*" "*.DS_Store"
 
+      - name: Empaquetar la extension de Claude Desktop
+        run: mcpb/build.sh
+
       - name: Crear la release con el ZIP
         env:
           GH_TOKEN: ${{ github.token }}
@@ -27,4 +31,4 @@ jobs:
           # Solo la seccion del CHANGELOG de esta version (de "## X.Y.Z" hasta la siguiente "## ").
           VERSION="${GITHUB_REF_NAME#v}"
           awk -v v="## $VERSION" 'index($0, v) == 1 {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
-          gh release create "$GITHUB_REF_NAME" dist/fintube-analyst-auditor.zip --title "$GITHUB_REF_NAME" --notes-file notes.md
+          gh release create "$GITHUB_REF_NAME" dist/fintube-analyst-auditor.zip dist/fintube-analyst-auditor.mcpb --title "$GITHUB_REF_NAME" --notes-file notes.md
